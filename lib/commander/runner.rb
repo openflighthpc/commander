@@ -311,12 +311,6 @@ module Commander
     end
 
     ##
-    # Remove hidden commands. Used by the general help
-    def remove_hidden_commands
-      commands.reject! { |k, v| !!v.hidden }
-    end
-
-    ##
     # Limit commands to those which are subcommands of the one that is active
     def limit_commands_to_subcommands(command)
       commands.reject! { |k, v|
@@ -336,9 +330,10 @@ module Commander
         c.example "Display help for 'foo'", 'command help foo'
         c.when_called do |args, _options|
           UI.enable_paging if program(:help_paging)
+          @help_commands = @commands.dup
           if args.empty?
-            remove_hidden_commands
             @help_options = @options.reject {|o| o[:switches].first == '--trace'}
+            @help_commands.reject! { |k, v| !!v.hidden }
             say help_formatter.render
           else
             command = command args.join(' ')
