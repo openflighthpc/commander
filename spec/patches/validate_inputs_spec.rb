@@ -15,7 +15,7 @@ RSpec.describe Commander::Patches::ValidateInputs do
 
   def create_test_patch_command
     command :test do |c|
-      c.syntax = 'metal test ARG1 ARG2 [OPTIONAL_ARG3] [options]'
+      c.syntax = 'metal test ARG1 ARG2 [OPTIONAL_ARG3]'
       c.description = 'test description'
       c.example 'description', 'command'
       c.option '-o', '--some-option', 'Some option that does things'
@@ -28,7 +28,7 @@ RSpec.describe Commander::Patches::ValidateInputs do
 
   def create_multi_word_test_command
     command :'test do' do |c|
-      c.syntax = 'metal test do ARG1 ARG2 [options]'
+      c.syntax = 'metal test do ARG1 ARG2'
       c.when_called do |args, _options|
         format('test do %<foo>s', foo: args.join(' '))
       end
