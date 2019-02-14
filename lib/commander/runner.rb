@@ -33,6 +33,7 @@ module Commander
       @always_trace = false
       @never_trace = false
       @silent_trace = false
+      @error_handler = nil
       create_default_commands
     end
 
@@ -69,18 +70,21 @@ module Commander
         begin
           run_active_command
         rescue InvalidCommandError => e
-          abort "#{e}. Use --help for more information"
+          error_handler&.call(e) ||
+            abort("#{e}. Use --help for more information")
         rescue \
           OptionParser::InvalidOption,
           OptionParser::InvalidArgument,
           OptionParser::MissingArgument => e
-          abort e.to_s
+          error_handler&.call(e) ||
+            abort(e.to_s)
         rescue => e
-          if @never_trace || @silent_trace
-            abort "error: #{e}."
-          else
-            abort "error: #{e}. Use --trace to view backtrace"
-          end
+          error_handler&.call(e) ||
+            if @never_trace || @silent_trace
+              abort("error: #{e}.")
+            else
+              abort("error: #{e}. Use --trace to view backtrace")
+            end
         end
       end
     end
@@ -117,6 +121,14 @@ module Commander
       @always_trace = false
       @never_trace = false
       @silent_trace = true
+    end
+
+    ##
+    # Set a handler to be used for advanced exception handling
+
+    def error_handler(&block)
+      @error_handler = block if block
+      @error_handler
     end
 
     ##
@@ -333,7 +345,8 @@ module Commander
             begin
               require_valid_command command
             rescue InvalidCommandError => e
-              abort "#{e}. Use --help for more information"
+              error_handler&.call(e) ||
+                abort("#{e}. Use --help for more information")
             end
             if command.sub_command_group
               limit_commands_to_subcommands(command)

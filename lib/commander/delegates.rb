@@ -4,6 +4,7 @@ module Commander
       add_command
       command
       program
+      error_handler
       run!
       global_option
       alias_command
