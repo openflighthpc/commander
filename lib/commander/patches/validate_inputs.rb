@@ -11,19 +11,13 @@ module Commander
       # Commander. It is VERY MUCH a hack but it works
       PatchEnabled = true
 
-      def run(*args)
-        super(*args)
-      rescue CommandUsageError => error
-        abort "error: #{error}. Usage: #{syntax}"
-      end
-
       def call(args = [])
         return super unless PatchEnabled
         return super if syntax_parts[0..1] == ['commander', 'help']
 
         # Use defined syntax to validate how many args this command can be
         # passed.
-        validate_correct_number_of_args!(args)
+        assert_correct_number_of_args!(args)
 
         # Invoke original method.
         super(args)
@@ -31,49 +25,51 @@ module Commander
 
       private
 
-      def validate_correct_number_of_args!(args)
+      def assert_correct_number_of_args!(args)
+        return if primary_command_word == 'help'
         if too_many_args?(args)
-          raise CommandUsageError, 'Too many arguments given'
+          raise CommandUsageError, "excess arguments for command '#{primary_command_word}'"
         elsif too_few_args?(args)
-          raise CommandUsageError, 'Too few arguments given'
+          raise CommandUsageError, "insufficient arguments for command '#{primary_command_word}'"
         end
       end
 
       def syntax_parts
-        syntax.split
+        @syntax_parts ||= syntax.split.tap do |parts|
+          while part = parts.shift do
+            break if part == primary_command_word || parts.length == 0
+          end
+        end
       end
 
-      def command_syntax_parts
-        number_command_words = name.split.length
-        syntax_parts[1, number_command_words]
+      def primary_command_word
+        name.split.last
       end
 
-      def arguments_syntax_parts
-        args_start_index = 1 + command_syntax_parts.length
-        args_end_index = syntax_parts.length - 1
-        syntax_parts[args_start_index...args_end_index]
+      def total_argument_count
+        syntax_parts.length
       end
 
-      def total_arguments
-        arguments_syntax_parts.length
-      end
-
-      def optional_arguments
-        arguments_syntax_parts.select do |part|
+      def optional_argument_count
+        syntax_parts.select do |part|
           part[0] == '[' && part[-1] == ']'
         end.length
       end
 
-      def required_arguments
-        total_arguments - optional_arguments
+      def variable_arg?
+        syntax_parts.any? {|part| part[-4..-1] == '...]' || part[-3..-1] == '...'}
+      end
+
+      def required_argument_count
+        total_argument_count - optional_argument_count
       end
 
       def too_many_args?(args)
-        args.length > total_arguments
+        !variable_arg? && args.length > total_argument_count
       end
 
       def too_few_args?(args)
-        args.length < required_arguments
+        args.length < required_argument_count
       end
     end
   end
