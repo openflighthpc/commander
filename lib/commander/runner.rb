@@ -348,7 +348,7 @@ module Commander
               error_handler&.call(e) ||
                 abort("#{e}. Use --help for more information")
             end
-            if command.sub_command_group
+            if command.sub_command_group?
               limit_commands_to_subcommands(command)
               say help_formatter.render_subcommand(command)
             else
