@@ -326,6 +326,7 @@ module Commander
           UI.enable_paging if program(:help_paging)
           if args.empty?
             remove_hidden_commands
+            @help_options = @options.reject {|o| o[:switches].first == '--trace'}
             say help_formatter.render
           else
             command = command args.join(' ')

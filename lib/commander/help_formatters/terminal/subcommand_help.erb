@@ -1,9 +1,8 @@
-
+<% if !cmd.syntax %>
   <%= $terminal.color "NAME", :bold %>:
 
     <%= cmd.name %>
-<% if @syntax -%>
-
+<% else -%>
   <%= $terminal.color "SYNOPSIS", :bold %>:
 
     <%= cmd.syntax -%>

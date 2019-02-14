@@ -18,9 +18,9 @@
     <%= "%-#{max_aliases_length}s %s %s" % [alias_name, command(alias_name).name, args.join(' ')] -%>
   <% end %>
 <% end %>
-<% unless @options.empty? -%>
+<% unless @help_options.empty? -%>
   <%= $terminal.color "GLOBAL OPTIONS", :bold %>:
-	<% for option in @options -%>
+	<% for option in @help_options -%>
 
     <%= option[:switches].join ', ' %> 
         <%= option[:description] %>
