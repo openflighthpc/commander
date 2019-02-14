@@ -33,6 +33,7 @@ module Commander
       @always_trace = false
       @never_trace = false
       @silent_trace = false
+      @error_handler = nil
       create_default_commands
     end
 
@@ -69,18 +70,21 @@ module Commander
         begin
           run_active_command
         rescue InvalidCommandError => e
-          abort "#{e}. Use --help for more information"
+          error_handler&.call(e) ||
+            abort("#{e}. Use --help for more information")
         rescue \
           OptionParser::InvalidOption,
           OptionParser::InvalidArgument,
           OptionParser::MissingArgument => e
-          abort e.to_s
+          error_handler&.call(e) ||
+            abort(e.to_s)
         rescue => e
-          if @never_trace || @silent_trace
-            abort "error: #{e}."
-          else
-            abort "error: #{e}. Use --trace to view backtrace"
-          end
+          error_handler&.call(e) ||
+            if @never_trace || @silent_trace
+              abort("error: #{e}.")
+            else
+              abort("error: #{e}. Use --trace to view backtrace")
+            end
         end
       end
     end
@@ -117,6 +121,14 @@ module Commander
       @always_trace = false
       @never_trace = false
       @silent_trace = true
+    end
+
+    ##
+    # Set a handler to be used for advanced exception handling
+
+    def error_handler(&block)
+      @error_handler = block if block
+      @error_handler
     end
 
     ##
@@ -299,12 +311,6 @@ module Commander
     end
 
     ##
-    # Remove hidden commands. Used by the general help
-    def remove_hidden_commands
-      commands.reject! { |k, v| !!v.hidden }
-    end
-
-    ##
     # Limit commands to those which are subcommands of the one that is active
     def limit_commands_to_subcommands(command)
       commands.reject! { |k, v|
@@ -324,17 +330,20 @@ module Commander
         c.example "Display help for 'foo'", 'command help foo'
         c.when_called do |args, _options|
           UI.enable_paging if program(:help_paging)
+          @help_commands = @commands.dup
           if args.empty?
-            remove_hidden_commands
+            @help_options = @options.reject {|o| o[:switches].first == '--trace'}
+            @help_commands.reject! { |k, v| !!v.hidden }
             say help_formatter.render
           else
             command = command args.join(' ')
             begin
               require_valid_command command
             rescue InvalidCommandError => e
-              abort "#{e}. Use --help for more information"
+              error_handler&.call(e) ||
+                abort("#{e}. Use --help for more information")
             end
-            if command.sub_command_group
+            if command.sub_command_group?
               limit_commands_to_subcommands(command)
               say help_formatter.render_subcommand(command)
             else

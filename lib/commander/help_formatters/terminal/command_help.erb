@@ -1,9 +1,8 @@
-
+<% if !@syntax -%>
   <%= $terminal.color "NAME", :bold %>:
 
     <%= @name %>
-<% if @syntax -%>
-
+<% else -%>
   <%= $terminal.color "SYNOPSIS", :bold %>:
 
     <%= @syntax -%>

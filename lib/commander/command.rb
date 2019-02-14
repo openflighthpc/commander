@@ -2,6 +2,8 @@ require 'optparse'
 require 'commander/patches/implicit-short-tags'
 require 'commander/patches/decimal-integer'
 require 'commander/patches/validate_inputs'
+require 'commander/patches/option_defaults'
+require 'commander/patches/help_formatter_binding'
 
 OptionParser.prepend Commander::Patches::ImplicitShortTags
 OptionParser.prepend Commander::Patches::DecimalInteger
@@ -116,16 +118,9 @@ module Commander
     #   c.option '--date [DATE]', Date
     #
 
+    # NOTE: This method is being patched to handle defaults differently
+    prepend Patches::OptionDefaults
     def option(*args, &block)
-      default = nil
-      args.delete_if do |v|
-        if v.is_a?(Hash) && v.key?(:default)
-          default = v[:default]
-          true
-        else
-          false
-        end
-      end
       switches, description = Runner.separate_switches_from_description(*args)
       proc = block || option_proc(switches)
       @options << {
@@ -133,7 +128,7 @@ module Commander
         proc: proc,
         switches: switches,
         description: description,
-      }.tap { |h| h.merge!({ default: default }) unless default.nil? }
+      }
     end
 
     ##
@@ -167,12 +162,29 @@ module Commander
     # Handles displaying subcommand help. By default it will set the action to 
     # display the subcommand if the action hasn't already been set
 
+    def sub_command_group?
+      !!@sub_command_group
+    end
+
     def sub_command_group=(value)
       @sub_command_group = value
       if @when_called.empty?
         self.action {
           exec("#{$0} #{ARGV.join(" ")} --help")
         }
+      end
+    end
+
+    def configure_sub_command(runner)
+      @sub_command_group = true
+      if @when_called.empty?
+        action do |args, opts|
+          unless args.empty?
+            raise Commander::Runner::InvalidCommandError,
+                  "unrecognized subcommand '#{args[0]}'"
+          end
+          runner.command('help').run(ARGV[0])
+        end
       end
     end
 

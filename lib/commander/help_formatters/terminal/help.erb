@@ -7,7 +7,7 @@
     <%= Commander::HelpFormatter.indent 4, program(:description) %>
 
   <%= $terminal.color "COMMANDS", :bold %>:
-<% for name, command in @commands.sort -%>
+<% for name, command in @help_commands.sort -%>
 	<% unless alias? name %>
     <%= "%-#{max_command_length}s %s" % [command.name, command.summary || command.description] -%>
 	<% end -%>
@@ -18,9 +18,9 @@
     <%= "%-#{max_aliases_length}s %s %s" % [alias_name, command(alias_name).name, args.join(' ')] -%>
   <% end %>
 <% end %>
-<% unless @options.empty? -%>
+<% unless @help_options.empty? -%>
   <%= $terminal.color "GLOBAL OPTIONS", :bold %>:
-	<% for option in @options -%>
+	<% for option in @help_options -%>
 
     <%= option[:switches].join ', ' %> 
         <%= option[:description] %>
