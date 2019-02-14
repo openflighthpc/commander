@@ -7,7 +7,7 @@
     <%= Commander::HelpFormatter.indent 4, program(:description) %>
 
   <%= $terminal.color "COMMANDS", :bold %>:
-<% for name, command in @commands.sort -%>
+<% for name, command in @help_commands.sort -%>
 	<% unless alias? name %>
     <%= "%-#{max_command_length}s %s" % [command.name, command.summary || command.description] -%>
 	<% end -%>
