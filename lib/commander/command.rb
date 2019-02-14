@@ -162,12 +162,29 @@ module Commander
     # Handles displaying subcommand help. By default it will set the action to 
     # display the subcommand if the action hasn't already been set
 
+    def sub_command_group?
+      !!@sub_command_group
+    end
+
     def sub_command_group=(value)
       @sub_command_group = value
       if @when_called.empty?
         self.action {
           exec("#{$0} #{ARGV.join(" ")} --help")
         }
+      end
+    end
+
+    def configure_sub_command(runner)
+      @sub_command_group = true
+      if @when_called.empty?
+        action do |args, opts|
+          unless args.empty?
+            raise Commander::Runner::InvalidCommandError,
+                  "unrecognized subcommand '#{args[0]}'"
+          end
+          runner.command('help').run(ARGV[0])
+        end
       end
     end
 
