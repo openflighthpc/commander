@@ -1,5 +1,23 @@
-[<img src="https://api.travis-ci.org/commander-rb/commander.svg" alt="Build Status" />](http://travis-ci.org/commander-rb/commander)
-[![Inline docs](http://inch-ci.org/github/commander-rb/commander.svg)](http://inch-ci.org/github/commander-rb/commander)
+# Note: This is a fork
+
+The version number was reset to 1.0.0 at the time of forking and
+roughly maps to v4.4.4 of the upstream project.
+
+You can find the original repo at
+[commander-rb/commander](https://github.com/commander-rb/commander).
+
+This fork adds a number of patches and modifications to the upstream
+project that support the OpenFlightHPC tools.
+
+To ship a new release, do the following:
+
+ * Increment the version number in `version.rb`
+ * Run `rake build`
+ * Run `rake release`
+
+Documentation from the upstream project follows.
+
+---
 
 # Commander
 

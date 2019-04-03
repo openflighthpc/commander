@@ -4,12 +4,12 @@ $LOAD_PATH.push File.expand_path('../lib', __FILE__)
 require 'commander/version'
 
 Gem::Specification.new do |s|
-  s.name        = 'commander'
+  s.name        = 'commander-openflighthpc'
   s.version     = Commander::VERSION
-  s.authors     = ['TJ Holowaychuk', 'Gabriel Gilder']
-  s.email       = ['gabriel@gabrielgilder.com']
+  s.authors     = ['Alces Flight Ltd', 'TJ Holowaychuk', 'Gabriel Gilder']
+  s.email       = ['flight@openflighthpc.org']
   s.license     = 'MIT'
-  s.homepage    = 'https://github.com/commander-rb/commander'
+  s.homepage    = 'https://github.com/openflighthpc/commander-openflighthpc'
   s.summary     = 'The complete solution for Ruby command-line executables'
   s.description = 'The complete solution for Ruby command-line executables. Commander bridges the gap between other terminal related libraries you know and love (OptionParser, HighLine), while providing many new features, and an elegant API.'
 

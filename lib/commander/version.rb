@@ -1,3 +1,3 @@
 module Commander
-  VERSION = '4.4.4-alces2'.freeze
+  VERSION = '1.0.0-alpha1'.freeze
 end
