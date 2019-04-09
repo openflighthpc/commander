@@ -1,9 +1,29 @@
+require 'paint'
+
 module Commander
   class Runner
+    DEFAULT_ERROR_HANDLER = lambda do |runner, e|
+      $stderr.puts "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
+      case e
+      when OptionParser::InvalidOption,
+           Commander::Runner::InvalidCommandError,
+           Commander::Patches::CommandUsageError
+        $stderr.puts "\nUsage:\n\n"
+        args = ARGV.reject{|o| o[0] == '-'}
+        if runner.command(topic = args[0..1].join(" "))
+          runner.command("help").run(topic)
+        elsif runner.command(args[0])
+          runner.command("help").run(args[0])
+        else
+          runner.command("help").run(:error)
+        end
+      end
+      exit(1)
+    end
+
     #--
     # Exceptions
     #++
-
     class CommandError < StandardError; end
     class InvalidCommandError < CommandError; end
 
@@ -33,7 +53,7 @@ module Commander
       @always_trace = false
       @never_trace = false
       @silent_trace = false
-      @error_handler = nil
+      @error_handler = DEFAULT_ERROR_HANDLER
       create_default_commands
     end
 
@@ -70,16 +90,16 @@ module Commander
         begin
           run_active_command
         rescue InvalidCommandError => e
-          error_handler&.call(e) ||
+          error_handler&.call(self, e) ||
             abort("#{e}. Use --help for more information")
         rescue \
           OptionParser::InvalidOption,
           OptionParser::InvalidArgument,
           OptionParser::MissingArgument => e
-          error_handler&.call(e) ||
+          error_handler&.call(self, e) ||
             abort(e.to_s)
         rescue => e
-          error_handler&.call(e) ||
+          error_handler&.call(self, e) ||
             if @never_trace || @silent_trace
               abort("error: #{e}.")
             else
@@ -324,23 +344,27 @@ module Commander
 
     def create_default_commands
       command :help do |c|
-        c.syntax = 'commander help [command]'
+        c.syntax = "#{program(:name)} help [command]"
         c.description = 'Display global or [command] help documentation'
-        c.example 'Display global help', 'command help'
-        c.example "Display help for 'foo'", 'command help foo'
+        c.example 'Display global help', "#{program(:name)} help"
+        c.example "Display help for 'foo'", "#{program(:name)} help foo"
         c.when_called do |args, _options|
           UI.enable_paging if program(:help_paging)
           @help_commands = @commands.dup
-          if args.empty?
+          if args.empty? || args[0] == :error
             @help_options = @options.reject {|o| o[:switches].first == '--trace'}
             @help_commands.reject! { |k, v| !!v.hidden }
+            old_wrap = $terminal.wrap_at
+            $terminal.wrap_at = nil
+            program(:nobanner, true) if args[0] == :error
             say help_formatter.render
+            $terminal.wrap_at = old_wrap
           else
             command = command args.join(' ')
             begin
               require_valid_command command
             rescue InvalidCommandError => e
-              error_handler&.call(e) ||
+              error_handler&.call(self, e) ||
                 abort("#{e}. Use --help for more information")
             end
             if command.sub_command_group?

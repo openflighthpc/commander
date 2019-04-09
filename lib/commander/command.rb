@@ -224,8 +224,9 @@ module Commander
     # Call the commands when_called block with _args_.
 
     def call(args = [])
-      object = @when_called.shift
-      meth = @when_called.shift || :call
+      callee = @when_called.dup
+      object = callee.shift
+      meth = callee.shift || :call
       options = proxy_option_struct
       case object
       when Proc then object.call(args, options)
