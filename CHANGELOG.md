@@ -1,3 +1,10 @@
+# 1.1.0 / 2019-04-10
+
+ * Added banner handling.
+ * Added default error handling.
+ * Fixed help text for `help` command to use program name.
+ * Fixed bug in command calling that prevented commands being called twice.
+
 # 1.0.0 / 2019-04-03
 
  * Reset version numbering for this fork.
