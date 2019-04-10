@@ -12,7 +12,7 @@ module Commander
         @runner = runner
       end
 
-      def render
+      def render(opts = {})
         'Implement global help here'
       end
 

@@ -1,3 +1,13 @@
+<%=
+  if !program(:nobanner)
+    begin
+      require 'openflight/banner'
+      OpenFlight::Banner.render(title: program(:application), version: program(:version))
+    rescue LoadError
+      nil
+    end
+  end
+-%>
   <%= $terminal.color "NAME", :bold %>:
 
     <%= program :name %>
