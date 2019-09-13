@@ -333,9 +333,19 @@ module Commander
     ##
     # Limit commands to those which are subcommands of the one that is active
     def limit_commands_to_subcommands(command)
-      commands.reject! { |k, v|
-        (k.to_s == command.name) ? true : !k.to_s.start_with?("#{command.name} ")
-      }
+      commands.select! do |other_sym, _|
+        other = other_sym.to_s
+        # Do not match sub-sub commands (matches for a second space)
+        if /\A#{command.name}\s.*\s/.match?(other)
+          false
+        # Do match regular sub commands
+        elsif /\A#{command.name}\s/.match?(other)
+          true
+        # Do not match any other commands
+        else
+          false
+        end
+      end
     end
 
     ##
