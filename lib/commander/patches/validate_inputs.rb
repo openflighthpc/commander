@@ -27,7 +27,10 @@ module Commander
 
       def assert_correct_number_of_args!(args)
         return if primary_command_word == 'help'
-        if too_many_args?(args)
+        too_many = too_many_args?(args)
+        if too_many && sub_command_group?
+          raise CommandUsageError, "unrecognised command. Please select from the following:"
+        elsif too_many
           raise CommandUsageError, "excess arguments for command '#{primary_command_word}'"
         elsif too_few_args?(args)
           raise CommandUsageError, "insufficient arguments for command '#{primary_command_word}'"
