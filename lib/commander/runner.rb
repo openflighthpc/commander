@@ -9,13 +9,10 @@ module Commander
            Commander::Runner::InvalidCommandError,
            Commander::Patches::CommandUsageError
         $stderr.puts "\nUsage:\n\n"
-        args = ARGV.reject{|o| o[0] == '-'}
-        if runner.command(topic = args[0..1].join(" "))
-          runner.command("help").run(topic)
-        elsif runner.command(args[0])
-          runner.command("help").run(args[0])
+        if cmd = runner.active_command
+          runner.command('help').run(cmd.name)
         else
-          runner.command("help").run(:error)
+          runner.command('help').run(:error)
         end
       end
       exit(1)
