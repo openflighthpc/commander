@@ -3,20 +3,37 @@ require 'paint'
 module Commander
   class Runner
     DEFAULT_ERROR_HANDLER = lambda do |runner, e|
-      $stderr.puts "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
+      error_msg = "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
       case e
       when OptionParser::InvalidOption,
            Commander::Runner::InvalidCommandError,
            Commander::Patches::CommandUsageError
-        $stderr.puts "\nUsage:\n\n"
-        args = ARGV.reject{|o| o[0] == '-'}
-        if runner.command(topic = args[0..1].join(" "))
-          runner.command("help").run(topic)
-        elsif runner.command(args[0])
-          runner.command("help").run(args[0])
+        # Display the error message for a specific command. Most likely due to
+        # invalid command syntax
+        if cmd = runner.active_command
+          $stderr.puts error_msg
+          $stderr.puts "\nUsage:\n\n"
+          runner.command('help').run(cmd.name)
+        # Display the main app help text when called without `--help`
+        elsif runner.args_without_command_name.empty?
+          $stderr.puts "Usage:\n\n"
+          runner.command('help').run(:error)
+        # Display the main app help text when called with arguments. Mostly
+        # likely an invalid syntax error
         else
-          runner.command("help").run(:error)
+          $stderr.puts error_msg
+          $stderr.puts "\nUsage:\n\n"
+          runner.command('help').run(:error)
         end
+      # Display the help text for sub command groups when called without `--help`
+      when SubCommandGroupError
+        if cmd = runner.active_command
+          $stderr.puts "Usage:\n\n"
+          runner.command('help').run(cmd.name)
+        end
+      # Catch all error message for all other issues
+      else
+        $stderr.puts error_msg
       end
       exit(1)
     end

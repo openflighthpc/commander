@@ -9,6 +9,8 @@ OptionParser.prepend Commander::Patches::ImplicitShortTags
 OptionParser.prepend Commander::Patches::DecimalInteger
 
 module Commander
+  class SubCommandGroupError < StandardError; end
+
   class Command
     prepend Patches::ValidateInputs
 
@@ -159,7 +161,7 @@ module Commander
     alias action when_called
 
     ##
-    # Handles displaying subcommand help. By default it will set the action to 
+    # Handles displaying subcommand help. By default it will set the action to
     # display the subcommand if the action hasn't already been set
 
     def sub_command_group?
@@ -168,11 +170,7 @@ module Commander
 
     def sub_command_group=(value)
       @sub_command_group = value
-      if @when_called.empty?
-        self.action {
-          exec("#{$0} #{ARGV.join(" ")} --help")
-        }
-      end
+      self.action { raise SubCommandGroupError } if value
     end
 
     def configure_sub_command(runner)
