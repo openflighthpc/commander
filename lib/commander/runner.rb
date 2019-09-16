@@ -3,15 +3,21 @@ require 'paint'
 module Commander
   class Runner
     DEFAULT_ERROR_HANDLER = lambda do |runner, e|
-      $stderr.puts "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
+      error_msg = "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
       case e
       when OptionParser::InvalidOption,
            Commander::Runner::InvalidCommandError,
            Commander::Patches::CommandUsageError
-        $stderr.puts "\nUsage:\n\n"
         if cmd = runner.active_command
+          $stderr.puts error_msg
+          $stderr.puts "\nUsage:\n\n"
           runner.command('help').run(cmd.name)
+        elsif runner.args_without_command_name.empty?
+          $stderr.puts "Usage:\n\n"
+          runner.command('help').run(:error)
         else
+          $stderr.puts error_msg
+          $stderr.puts "\nUsage:\n\n"
           runner.command('help').run(:error)
         end
       end
