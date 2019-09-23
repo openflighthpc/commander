@@ -4,6 +4,7 @@ require 'commander/patches/decimal-integer'
 require 'commander/patches/validate_inputs'
 require 'commander/patches/option_defaults'
 require 'commander/patches/help_formatter_binding'
+require 'commander/patches/priority_sort'
 
 OptionParser.prepend Commander::Patches::ImplicitShortTags
 OptionParser.prepend Commander::Patches::DecimalInteger
@@ -13,6 +14,7 @@ module Commander
 
   class Command
     prepend Patches::ValidateInputs
+    prepend Patches::PrioritySort
 
     attr_accessor :name, :examples, :syntax, :description
     attr_accessor :summary, :proxy_options, :options, :hidden
