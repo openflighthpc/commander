@@ -15,7 +15,7 @@
 
 
   <%= $terminal.color "SUBCOMMANDS", :bold %>:
-<% for name, command in @commands.sort -%>
+<% @commands.values.sort.map { |c| [c.name, c] }.each do |name, command| -%>
   <% unless alias? name %>
     <%= "%-#{max_command_length}s %s" % [command.name, command.summary || command.description] -%>
   <% end -%>
