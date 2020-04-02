@@ -4,6 +4,7 @@ module Commander
   class Runner
     ERROR_HANDLER = lambda do |runner, e|
       error_msg = "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
+      exit_code = e.respond_to?(:exit_code) ?  e.exit_code.to_i : 1
       case e
       when OptionParser::InvalidOption,
            Commander::Runner::InvalidCommandError,
@@ -25,17 +26,22 @@ module Commander
           $stderr.puts "\nUsage:\n\n"
           runner.command('help').run(:error)
         end
+        exit_code = 254
       # Display the help text for sub command groups when called without `--help`
       when SubCommandGroupError
         if cmd = runner.active_command
           $stderr.puts "Usage:\n\n"
           runner.command('help').run(cmd.name)
         end
+        exit_code = 254
+      when Interrupt
+        $stderr.puts 'Received Interrupt!'
+        exit_code = 255
       # Catch all error message for all other issues
       else
         $stderr.puts error_msg
       end
-      exit(e.respond_to?(:exit_code) ? e.exit_code.to_i : 1 )
+      exit(exit_code)
     end
 
     #--
