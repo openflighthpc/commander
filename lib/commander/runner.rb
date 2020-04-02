@@ -105,22 +105,8 @@ module Commander
       else
         begin
           run_active_command
-        rescue InvalidCommandError => e
-          error_handler&.call(self, e) ||
-            abort("#{e}. Use --help for more information")
-        rescue \
-          OptionParser::InvalidOption,
-          OptionParser::InvalidArgument,
-          OptionParser::MissingArgument => e
-          error_handler&.call(self, e) ||
-            abort(e.to_s)
-        rescue => e
-          error_handler&.call(self, e) ||
-            if @never_trace || @silent_trace
-              abort("error: #{e}.")
-            else
-              abort("error: #{e}. Use --trace to view backtrace")
-            end
+        rescue StandardError, Interrupt => e
+          ERROR_HANDLER.call(self, e)
         end
       end
     end
@@ -157,13 +143,6 @@ module Commander
       @always_trace = false
       @never_trace = false
       @silent_trace = true
-    end
-
-    ##
-    # Force the user of the ERROR_HANDLER
-
-    def error_handler
-      ERROR_HANDLER
     end
 
     ##
