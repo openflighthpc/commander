@@ -374,8 +374,7 @@ module Commander
             begin
               require_valid_command command
             rescue InvalidCommandError => e
-              error_handler&.call(self, e) ||
-                abort("#{e}. Use --help for more information")
+              ERROR_HANDLER.call(self, e)
             end
             if command.sub_command_group?
               limit_commands_to_subcommands(command)
