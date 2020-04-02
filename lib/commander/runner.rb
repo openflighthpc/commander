@@ -2,7 +2,7 @@ require 'paint'
 
 module Commander
   class Runner
-    DEFAULT_ERROR_HANDLER = lambda do |runner, e|
+    ERROR_HANDLER = lambda do |runner, e|
       error_msg = "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
       case e
       when OptionParser::InvalidOption,
@@ -70,7 +70,6 @@ module Commander
       @always_trace = false
       @never_trace = false
       @silent_trace = false
-      @error_handler = DEFAULT_ERROR_HANDLER
       create_default_commands
     end
 
@@ -161,11 +160,10 @@ module Commander
     end
 
     ##
-    # Set a handler to be used for advanced exception handling
+    # Force the user of the ERROR_HANDLER
 
-    def error_handler(&block)
-      @error_handler = block if block
-      @error_handler
+    def error_handler
+      ERROR_HANDLER
     end
 
     ##
