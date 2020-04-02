@@ -35,7 +35,7 @@ module Commander
       else
         $stderr.puts error_msg
       end
-      exit(1)
+      exit(e.respond_to?(:exit_code) ? e.exit_code.to_i : 1 )
     end
 
     #--
