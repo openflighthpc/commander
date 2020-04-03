@@ -35,11 +35,11 @@ module Commander
       ##
       # Wrapper run command with error handling
       def run!
-        instance.instance_variable_set(:@commands, commands)
         instance.instance_variable_set(:@aliases, aliases)
         instance.instance_variable_set(:@program, @program)
         instance.instance_variable_set(:@options, global_options)
         instance.instance_variable_set(:@default_command, default_command)
+        instance.instance_variable_set(:@commands, commands_with_help(instance))
         instance.run
       rescue StandardError, Interrupt => e
         error_handler(instance, e, args.include?('--trace'))
@@ -108,17 +108,7 @@ module Commander
       ##
       # Hash of Command objects
       def commands
-        @commands ||= {
-          'help' => Command.new('help').tap do |c|
-            c.syntax = "#{program(:name)} help [command]"
-            c.description = 'Display global or [command] help documentation'
-            c.example 'Display global help', "#{program(:name)} help"
-            c.example "Display help for 'foo'", "#{program(:name)} help foo"
-            c.when_called do |args, _options|
-              instance.run_help_command(args)
-            end
-          end
-        }
+        @commands ||= {}
       end
 
       ##
@@ -229,6 +219,20 @@ module Commander
       # TODO: Eventually make this method dynamically within run
       def instance
         @instance ||= Runner.new(args)
+      end
+
+      def commands_with_help(runner)
+        commands.dup.tap do |cmds|
+          cmds['help'] = Command.new('help').tap do |c|
+            c.syntax = "#{program(:name)} help [command]"
+            c.description = 'Display global or [command] help documentation'
+            c.example 'Display global help', "#{program(:name)} help"
+            c.example "Display help for 'foo'", "#{program(:name)} help foo"
+            c.when_called do |args, _options|
+              instance.run_help_command(args)
+            end
+          end
+        end
       end
     end
 
