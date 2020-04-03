@@ -14,9 +14,5 @@ module Commander
         end
       END
     end
-
-    def defined_commands(*args, &block)
-      ::Commander::Runner.instance.commands(*args, &block)
-    end
   end
 end
