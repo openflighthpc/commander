@@ -35,7 +35,6 @@ module Commander
       # TODO: Eventually store this operations on the base class
       # and replay them on the runner
       %w(
-        program
         global_option
         default_command
       ).each do |method|
@@ -49,9 +48,60 @@ module Commander
       def run!
         instance.instance_variable_set(:@commands, commands)
         instance.instance_variable_set(:@aliases, aliases)
+        instance.instance_variable_set(:@program, @program)
         instance.run
       rescue StandardError, Interrupt => e
         error_handler(instance, e, args.include?('--trace'))
+      end
+
+      ##
+      # Assign program information.
+      #
+      # === Examples
+      #
+      #   # Set data
+      #   program :name, 'Commander'
+      #   program :version, Commander::VERSION
+      #   program :description, 'Commander utility program.'
+      #   program :help, 'Copyright', '2008 TJ Holowaychuk'
+      #   program :help, 'Anything', 'You want'
+      #   program :int_message 'Bye bye!'
+      #   program :help_formatter, :compact
+      #   program :help_formatter, Commander::HelpFormatter::TerminalCompact
+      #
+      #   # Get data
+      #   program :name # => 'Commander'
+      #
+      # === Keys
+      #
+      #   :version         (required) Program version triple, ex: '0.0.1'
+      #   :description     (required) Program description
+      #   :name            Program name, defaults to basename of executable
+      #   :help_formatter  Defaults to Commander::HelpFormatter::Terminal
+      #   :help            Allows addition of arbitrary global help blocks
+      #   :help_paging     Flag for toggling help paging
+      #
+
+      def program(key, *args, &block)
+        @program ||= {
+          help_formatter: HelpFormatter::Terminal,
+          name: File.basename($PROGRAM_NAME),
+          help_paging: true,
+        }
+
+        if key == :help && !args.empty?
+          @program[:help] ||= {}
+          @program[:help][args.first] = args.at(1)
+        elsif key == :help_formatter && !args.empty?
+          @program[key] = (@help_formatter_aliases[args.first] || args.first)
+        elsif block
+          @program[key] = block
+        else
+          unless args.empty?
+            @program[key] = args.count == 1 ? args[0] : args
+          end
+          @program[key]
+        end
       end
 
       ##
@@ -153,7 +203,7 @@ module Commander
       @args = args.dup.tap { |a| a.delete('--trace') }
       @commands, @aliases, @options = {}, {}, []
       @help_formatter_aliases = help_formatter_alias_defaults
-      @program = program_defaults
+      @program = {}
     end
 
     ##
@@ -186,48 +236,11 @@ module Commander
     end
 
     ##
-    # Assign program information.
+    # The hash of program variables
     #
-    # === Examples
-    #
-    #   # Set data
-    #   program :name, 'Commander'
-    #   program :version, Commander::VERSION
-    #   program :description, 'Commander utility program.'
-    #   program :help, 'Copyright', '2008 TJ Holowaychuk'
-    #   program :help, 'Anything', 'You want'
-    #   program :int_message 'Bye bye!'
-    #   program :help_formatter, :compact
-    #   program :help_formatter, Commander::HelpFormatter::TerminalCompact
-    #
-    #   # Get data
-    #   program :name # => 'Commander'
-    #
-    # === Keys
-    #
-    #   :version         (required) Program version triple, ex: '0.0.1'
-    #   :description     (required) Program description
-    #   :name            Program name, defaults to basename of executable
-    #   :help_formatter  Defaults to Commander::HelpFormatter::Terminal
-    #   :help            Allows addition of arbitrary global help blocks
-    #   :help_paging     Flag for toggling help paging
-    #   :int_message     Message to display when interrupted (CTRL + C)
-    #
-
-    def program(key, *args, &block)
-      if key == :help && !args.empty?
-        @program[:help] ||= {}
-        @program[:help][args.first] = args.at(1)
-      elsif key == :help_formatter && !args.empty?
-        @program[key] = (@help_formatter_aliases[args.first] || args.first)
-      elsif block
-        @program[key] = block
-      else
-        unless args.empty?
-          @program[key] = args.count == 1 ? args[0] : args
-        end
-        @program[key]
-      end
+    def program(key, default = nil)
+      @program[key] ||= default if default
+      @program[key]
     end
 
     ##
@@ -338,17 +351,6 @@ module Commander
     def help_formatter_alias_defaults
       {
         compact: HelpFormatter::TerminalCompact,
-      }
-    end
-
-    ##
-    # Returns hash of program defaults.
-
-    def program_defaults
-      {
-        help_formatter: HelpFormatter::Terminal,
-        name: File.basename($PROGRAM_NAME),
-        help_paging: true,
       }
     end
 
