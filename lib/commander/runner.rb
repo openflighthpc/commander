@@ -70,6 +70,10 @@ module Commander
     # Initialize a new command runner. Optionally
     # supplying _args_ for mocking, or arbitrary usage.
 
+    ##
+    # Display the backtrace in the event of an error
+    attr_accessor :trace
+
     def initialize(args = ARGV)
       @args, @commands, @aliases, @options = args, {}, {}, []
       @help_formatter_aliases = help_formatter_alias_defaults
@@ -84,12 +88,21 @@ module Commander
       @singleton ||= new
     end
 
-    ##
-    # Run command parsing and execution process.
 
+    ##
+    # Wrapper run command with error handling
     def run!
+      run
+    rescue StandardError, Interrupt => e
+      ERROR_HANDLER.call(self, e, trace)
+    end
+
+    ##
+    # Run command parsing and execution process
+    # NOTE: This method does not have error handling, see: run!
+
+    def run
       require_program :version, :description
-      trace = false
 
       global_option('-h', '--help', 'Display help documentation') do
         args = @args - %w(-h --help)
@@ -101,15 +114,11 @@ module Commander
         return
       end
       trace_msg = 'Display backtrace when an error occurs'
-      global_option('--trace', trace_msg) { trace = true }
+      global_option('--trace', trace_msg) { self.trace = true }
       parse_global_options
       remove_global_options options, @args
 
-      begin
-        run_active_command
-      rescue StandardError, Interrupt => e
-        ERROR_HANDLER.call(self, e, trace)
-      end
+      run_active_command
     end
 
     ##
@@ -342,7 +351,7 @@ module Commander
             begin
               require_valid_command command
             rescue InvalidCommandError => e
-              ERROR_HANDLER.call(self, e, false)
+              ERROR_HANDLER.call(self, e, trace)
             end
             if command.sub_command_group?
               limit_commands_to_subcommands(command)
