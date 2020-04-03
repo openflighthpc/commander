@@ -3,7 +3,7 @@ require 'paint'
 module Commander
   class Runner
     ERROR_HANDLER = lambda do |runner, e, trace|
-      $stderr.puts e.backtrace if trace
+      $stderr.puts e.backtrace.reverse if trace
       error_msg = "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
       exit_code = e.respond_to?(:exit_code) ?  e.exit_code.to_i : 1
       case e
@@ -342,7 +342,7 @@ module Commander
             begin
               require_valid_command command
             rescue InvalidCommandError => e
-              ERROR_HANDLER.call(self, e)
+              ERROR_HANDLER.call(self, e, false)
             end
             if command.sub_command_group?
               limit_commands_to_subcommands(command)
