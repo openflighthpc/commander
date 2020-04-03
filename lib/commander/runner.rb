@@ -2,35 +2,6 @@ require 'paint'
 
 module Commander
   class Runner
-    #--
-    # Exceptions
-    #++
-    class CommandError < StandardError; end
-    class InvalidCommandError < CommandError; end
-
-    ##
-    # Array of commands.
-
-    attr_reader :commands
-
-    ##
-    # Global options.
-
-    attr_reader :options
-
-    ##
-    # Hash of help formatter aliases.
-
-    attr_reader :help_formatter_aliases
-
-    ##
-    # Initialize a new command runner. Optionally
-    # supplying _args_ for mocking, or arbitrary usage.
-
-    ##
-    # Display the backtrace in the event of an error
-    attr_accessor :trace
-
     module Builder
       ##
       # Wrapper run command with error handling
@@ -208,6 +179,35 @@ module Commander
         exit(exit_code)
       end
     end
+
+    #--
+    # Exceptions
+    #++
+    class CommandError < StandardError; end
+    class InvalidCommandError < CommandError; end
+
+    ##
+    # Array of commands.
+
+    attr_reader :commands
+
+    ##
+    # Global options.
+
+    attr_reader :options
+
+    ##
+    # Hash of help formatter aliases.
+
+    attr_reader :help_formatter_aliases
+
+    ##
+    # Initialize a new command runner. Optionally
+    # supplying _args_ for mocking, or arbitrary usage.
+
+    ##
+    # Display the backtrace in the event of an error
+    attr_accessor :trace
 
     def initialize(*inputs)
       @program, @commands, @default_command, \
