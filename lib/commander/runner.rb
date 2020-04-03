@@ -2,49 +2,6 @@ require 'paint'
 
 module Commander
   class Runner
-    ERROR_HANDLER = lambda do |runner, e, trace|
-      $stderr.puts e.backtrace.reverse if trace
-      error_msg = "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
-      exit_code = e.respond_to?(:exit_code) ?  e.exit_code.to_i : 1
-      case e
-      when OptionParser::InvalidOption,
-           Commander::Runner::InvalidCommandError,
-           Commander::Patches::CommandUsageError
-        # Display the error message for a specific command. Most likely due to
-        # invalid command syntax
-        if cmd = runner.active_command
-          $stderr.puts error_msg
-          $stderr.puts "\nUsage:\n\n"
-          runner.command('help').run(cmd.name)
-        # Display the main app help text when called without `--help`
-        elsif runner.args_without_command_name.empty?
-          $stderr.puts "Usage:\n\n"
-          runner.command('help').run(:error)
-        # Display the main app help text when called with arguments. Mostly
-        # likely an invalid syntax error
-        else
-          $stderr.puts error_msg
-          $stderr.puts "\nUsage:\n\n"
-          runner.command('help').run(:error)
-        end
-        exit_code = 254
-      # Display the help text for sub command groups when called without `--help`
-      when SubCommandGroupError
-        if cmd = runner.active_command
-          $stderr.puts "Usage:\n\n"
-          runner.command('help').run(cmd.name)
-        end
-        exit_code = 254
-      when Interrupt
-        $stderr.puts 'Received Interrupt!'
-        exit_code = 255
-      # Catch all error message for all other issues
-      else
-        $stderr.puts error_msg
-      end
-      exit(exit_code)
-    end
-
     #--
     # Exceptions
     #++
@@ -78,7 +35,6 @@ module Commander
       # TODO: Eventually store this operations on the base class
       # and replay them on the runner
       %w(
-        command
         program
         global_option
         alias_command
@@ -92,23 +48,84 @@ module Commander
       ##
       # Wrapper run command with error handling
       def run!
+        instance.instance_variable_get(:@commands)
+                .merge!(commands)
         instance.run
       rescue StandardError, Interrupt => e
-        ERROR_HANDLER.call(self, e, trace)
+        error_handler(instance, e, args.include?('--trace'))
+      end
+
+      ##
+      # Hash of Command objects
+      def commands
+        @commands ||= {}
+      end
+
+      def command(name)
+        name = name.to_s
+        (commands[name] ||= Command.new(name)).tap do |cmd|
+          yield cmd if block_given?
+        end
+      end
+
+      def error_handler(runner, e, trace)
+        $stderr.puts e.backtrace.reverse if trace
+        error_msg = "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
+        exit_code = e.respond_to?(:exit_code) ?  e.exit_code.to_i : 1
+        case e
+        when OptionParser::InvalidOption,
+             Commander::Runner::InvalidCommandError,
+             Commander::Patches::CommandUsageError
+          # Display the error message for a specific command. Most likely due to
+          # invalid command syntax
+          if cmd = runner.active_command
+            $stderr.puts error_msg
+            $stderr.puts "\nUsage:\n\n"
+            runner.command('help').run(cmd.name)
+          # Display the main app help text when called without `--help`
+          elsif runner.args_without_command_name.empty?
+            $stderr.puts "Usage:\n\n"
+            runner.command('help').run(:error)
+          # Display the main app help text when called with arguments. Mostly
+          # likely an invalid syntax error
+          else
+            $stderr.puts error_msg
+            $stderr.puts "\nUsage:\n\n"
+            runner.command('help').run(:error)
+          end
+          exit_code = 254
+        # Display the help text for sub command groups when called without `--help`
+        when SubCommandGroupError
+          if cmd = runner.active_command
+            $stderr.puts "Usage:\n\n"
+            runner.command('help').run(cmd.name)
+          end
+          exit_code = 254
+        when Interrupt
+          $stderr.puts 'Received Interrupt!'
+          exit_code = 255
+        # Catch all error message for all other issues
+        else
+          $stderr.puts error_msg
+        end
+        exit(exit_code)
       end
 
       private
 
+      def args
+        @args ||= ARGV
+      end
+
       # TODO: Eventually make this method dynamically within run
       def instance
-        @instance ||= Runner.new(
-          args: ARGV
-        )
+        @instance ||= Runner.new(args)
       end
     end
 
-    def initialize(args:)
-      @args, @commands, @aliases, @options = args, {}, {}, []
+    def initialize(args)
+      @args = args.dup.tap { |a| a.delete('--trace') }
+      @commands, @aliases, @options = {}, {}, []
       @help_formatter_aliases = help_formatter_alias_defaults
       @program = program_defaults
       create_default_commands
@@ -130,8 +147,6 @@ module Commander
         say version
         return
       end
-      trace_msg = 'Display backtrace when an error occurs'
-      global_option('--trace', trace_msg) { self.trace = true }
       parse_global_options
       remove_global_options options, @args
 
@@ -353,7 +368,6 @@ module Commander
           UI.enable_paging if program(:help_paging)
           @help_commands = @commands.dup
           if args.empty? || args[0] == :error
-            @help_options = @options.reject {|o| o[:switches].first == '--trace'}
             @help_commands.reject! { |k, v| !!v.hidden }
             old_wrap = $terminal.wrap_at
             $terminal.wrap_at = nil
@@ -362,11 +376,7 @@ module Commander
             $terminal.wrap_at = old_wrap
           else
             command = command args.join(' ')
-            begin
-              require_valid_command command
-            rescue InvalidCommandError => e
-              ERROR_HANDLER.call(self, e, trace)
-            end
+            require_valid_command command
             if command.sub_command_group?
               limit_commands_to_subcommands(command)
               say help_formatter.render_subcommand(command)
