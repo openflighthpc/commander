@@ -35,7 +35,6 @@ module Commander
       # TODO: Eventually store this operations on the base class
       # and replay them on the runner
       %w(
-        global_option
         default_command
       ).each do |method|
         define_method(method) do |*args, &block|
@@ -49,6 +48,7 @@ module Commander
         instance.instance_variable_set(:@commands, commands)
         instance.instance_variable_set(:@aliases, aliases)
         instance.instance_variable_set(:@program, @program)
+        instance.instance_variable_set(:@options, global_options)
         instance.run
       rescue StandardError, Interrupt => e
         error_handler(instance, e, args.include?('--trace'))
@@ -119,6 +119,38 @@ module Commander
           end
         }
       end
+
+      ##
+      # Hash of Global Options
+      def global_options
+        @global_options ||= begin
+          @global_options = [] # Allows Recursive - Refactor
+          global_option('-h', '--help', 'Display help documentation') do
+            args = @args - %w(-h --help)
+            command(:help).run(*args)
+            return
+          end
+          global_option('--version', 'Display version information') do
+            say version
+            return
+          end
+        end
+      end
+
+      ##
+      # Add a global option; follows the same syntax as Command#option
+      # This would be used for switches such as --version, --trace, etc.
+
+      def global_option(*args, &block)
+        switches, description = Runner.separate_switches_from_description(*args)
+        global_options << {
+          args: args,
+          proc: block,
+          switches: switches,
+          description: description,
+        }
+      end
+
 
       ##
       # Define and get a command by name
@@ -213,15 +245,6 @@ module Commander
     def run
       require_program :version, :description
 
-      global_option('-h', '--help', 'Display help documentation') do
-        args = @args - %w(-h --help)
-        command(:help).run(*args)
-        return
-      end
-      global_option('--version', 'Display version information') do
-        say version
-        return
-      end
       parse_global_options
       remove_global_options options, @args
 
@@ -264,20 +287,6 @@ module Commander
         yield @commands[name]
       end
       @commands[name]
-    end
-
-    ##
-    # Add a global option; follows the same syntax as Command#option
-    # This would be used for switches such as --version, --trace, etc.
-
-    def global_option(*args, &block)
-      switches, description = Runner.separate_switches_from_description(*args)
-      @options << {
-        args: args,
-        proc: block,
-        switches: switches,
-        description: description,
-      }
     end
 
     ##
