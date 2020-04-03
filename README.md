@@ -439,25 +439,7 @@ This abstraction could be utilized to generate HTML documentation for your execu
 
 ### Tracing
 
-By default the `-t` and `--trace` global options are provided to allow users to get a backtrace to aid debugging.
-
-You can disable these options:
-
-```ruby
-never_trace!
-```
-
-Or make it always on:
-
-```ruby
-always_trace!
-```
-
-Include the `--trace` global option but turn off the error message prompt:
-
-```ruby
-silent_trace!
-```
+WIP: Update OpenFlight --trace behaviour
 
 ## Tips
 

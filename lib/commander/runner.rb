@@ -2,7 +2,8 @@ require 'paint'
 
 module Commander
   class Runner
-    ERROR_HANDLER = lambda do |runner, e|
+    ERROR_HANDLER = lambda do |runner, e, trace|
+      $stderr.puts e.backtrace if trace
       error_msg = "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
       exit_code = e.respond_to?(:exit_code) ?  e.exit_code.to_i : 1
       case e
@@ -73,9 +74,6 @@ module Commander
       @args, @commands, @aliases, @options = args, {}, {}, []
       @help_formatter_aliases = help_formatter_alias_defaults
       @program = program_defaults
-      @always_trace = false
-      @never_trace = false
-      @silent_trace = false
       create_default_commands
     end
 
@@ -90,8 +88,8 @@ module Commander
     # Run command parsing and execution process.
 
     def run!
-      trace = @always_trace || false
       require_program :version, :description
+      trace = false
       trap('INT') { abort program(:int_message) } if program(:int_message)
       trap('INT') { program(:int_block).call } if program(:int_block)
       global_option('-h', '--help', 'Display help documentation') do
@@ -103,17 +101,14 @@ module Commander
         say version
         return
       end
-      global_option('--trace', 'Display backtrace when an error occurs') { trace = true } unless @never_trace || @always_trace
+      trace_msg = 'Display backtrace when an error occurs'
+      global_option('--trace', trace_msg) { trace = true }
       parse_global_options
       remove_global_options options, @args
-      if trace
+      begin
         run_active_command
-      else
-        begin
-          run_active_command
-        rescue StandardError, Interrupt => e
-          ERROR_HANDLER.call(self, e)
-        end
+      rescue StandardError, Interrupt => e
+        ERROR_HANDLER.call(self, e, trace)
       end
     end
 
@@ -122,33 +117,6 @@ module Commander
 
     def version
       format('%s %s', program(:name), program(:version))
-    end
-
-    ##
-    # Enable tracing on all executions (bypasses --trace)
-
-    def always_trace!
-      @always_trace = true
-      @never_trace = false
-      @silent_trace = false
-    end
-
-    ##
-    # Hide the trace option from the help menus and don't add it as a global option
-
-    def never_trace!
-      @always_trace = false
-      @never_trace = true
-      @silent_trace = false
-    end
-
-    ##
-    # Includes the trace option in the help but not in the error message
-
-    def silent_trace!
-      @always_trace = false
-      @never_trace = false
-      @silent_trace = true
     end
 
     ##
