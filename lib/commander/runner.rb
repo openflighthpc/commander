@@ -34,12 +34,11 @@ module Commander
     module Builder
       ##
       # Wrapper run command with error handling
-      def run!
-        instance.instance_variable_set(:@aliases, aliases)
-        instance.instance_variable_set(:@program, @program)
-        instance.instance_variable_set(:@options, global_options)
-        instance.instance_variable_set(:@default_command, default_command)
-        instance.instance_variable_set(:@commands, commands_with_help(instance))
+      def run!(*args)
+        instance = Runner.new(
+          @program, commands, default_command,
+          global_options, aliases, args
+        )
         instance.run
       rescue StandardError, Interrupt => e
         error_handler(instance, e, args.include?('--trace'))
@@ -142,7 +141,6 @@ module Commander
         }
       end
 
-
       ##
       # Define and get a command by name
       #
@@ -209,38 +207,22 @@ module Commander
         end
         exit(exit_code)
       end
-
-      private
-
-      def args
-        @args ||= ARGV
-      end
-
-      # TODO: Eventually make this method dynamically within run
-      def instance
-        @instance ||= Runner.new(args)
-      end
-
-      def commands_with_help(runner)
-        commands.dup.tap do |cmds|
-          cmds['help'] = Command.new('help').tap do |c|
-            c.syntax = "#{program(:name)} help [command]"
-            c.description = 'Display global or [command] help documentation'
-            c.example 'Display global help', "#{program(:name)} help"
-            c.example "Display help for 'foo'", "#{program(:name)} help foo"
-            c.when_called do |args, _options|
-              instance.run_help_command(args)
-            end
-          end
-        end
-      end
     end
 
-    def initialize(args)
-      @args = args.dup.tap { |a| a.delete('--trace') }
-      @commands, @aliases, @options = {}, {}, []
+    def initialize(*inputs)
+      @program, @commands, @default_command, \
+        @options, @aliases, @args = inputs.map(&:dup)
+      @args.reject! { |a| a == '--trace' }
+      @commands['help'] ||= Command.new('help').tap do |c|
+        c.syntax = "#{program(:name)} help [command]"
+        c.description = 'Display global or [command] help documentation'
+        c.example 'Display global help', "#{program(:name)} help"
+        c.example "Display help for 'foo'", "#{program(:name)} help foo"
+        c.when_called do |help_args, _|
+          self.run_help_command(help_args)
+        end
+      end
       @help_formatter_aliases = help_formatter_alias_defaults
-      @program = {}
     end
 
     ##
