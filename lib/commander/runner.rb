@@ -74,6 +74,9 @@ module Commander
     # Display the backtrace in the event of an error
     attr_accessor :trace
 
+    module Builder
+    end
+
     def initialize(args = ARGV)
       @args, @commands, @aliases, @options = args, {}, {}, []
       @help_formatter_aliases = help_formatter_alias_defaults
@@ -187,9 +190,13 @@ module Commander
     #   end
     #
 
-    def command(name, &block)
-      yield add_command(Commander::Command.new(name)) if block
-      @commands[name.to_s]
+    def command(name)
+      name = name.to_s
+      if block_given?
+        @commands[name] = Commander::Command.new(name)
+        yield @commands[name]
+      end
+      @commands[name]
     end
 
     ##
@@ -221,13 +228,6 @@ module Commander
 
     def default_command(name)
       @default_command = name
-    end
-
-    ##
-    # Add a command object to this runner.
-
-    def add_command(command)
-      @commands[command.name] = command
     end
 
     ##
