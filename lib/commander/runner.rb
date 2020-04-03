@@ -90,12 +90,7 @@ module Commander
     #
 
     def command(name)
-      name = name.to_s
-      if block_given?
-        @commands[name] = Commander::Command.new(name)
-        yield @commands[name]
-      end
-      @commands[name]
+      @commands[name.to_s]
     end
 
     ##
