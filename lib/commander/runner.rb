@@ -37,7 +37,6 @@ module Commander
       %w(
         program
         global_option
-        alias_command
         default_command
       ).each do |method|
         define_method(method) do |*args, &block|
@@ -49,6 +48,7 @@ module Commander
       # Wrapper run command with error handling
       def run!
         instance.instance_variable_set(:@commands, commands)
+        instance.instance_variable_set(:@aliases, aliases)
         instance.run
       rescue StandardError, Interrupt => e
         error_handler(instance, e, args.include?('--trace'))
@@ -70,11 +70,28 @@ module Commander
         }
       end
 
+      ##
+      # Define and get a command by name
+      #
       def command(name)
         name = name.to_s
         (commands[name] ||= Command.new(name)).tap do |cmd|
           yield cmd if block_given?
         end
+      end
+
+      # A hash of known aliases
+      def aliases
+        @aliases ||= {}
+      end
+
+      ##
+      # Alias command _name_ with _alias_name_. Optionally _args_ may be passed
+      # as if they were being passed straight to the original command via the command-line.
+
+      def alias_command(alias_name, name, *args)
+        commands[alias_name.to_s] = command name
+        aliases[alias_name.to_s] = args
       end
 
       def error_handler(runner, e, trace)
@@ -251,15 +268,6 @@ module Commander
     end
 
     ##
-    # Alias command _name_ with _alias_name_. Optionally _args_ may be passed
-    # as if they were being passed straight to the original command via the command-line.
-
-    def alias_command(alias_name, name, *args)
-      @commands[alias_name.to_s] = command name
-      @aliases[alias_name.to_s] = args
-    end
-
-    ##
     # Default command _name_ to be used when no other
     # command is found in the arguments.
 
@@ -369,6 +377,7 @@ module Commander
       UI.enable_paging if program(:help_paging)
       @help_commands = @commands.dup
       if args.empty? || args[0] == :error
+        @help_options = @options
         @help_commands.reject! { |k, v| !!v.hidden }
         old_wrap = $terminal.wrap_at
         $terminal.wrap_at = nil
