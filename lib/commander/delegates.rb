@@ -8,9 +8,6 @@ module Commander
       global_option
       alias_command
       default_command
-      always_trace!
-      never_trace!
-      silent_trace!
     ).each do |meth|
       eval <<-END, binding, __FILE__, __LINE__
         def #{meth}(*args, &block)
