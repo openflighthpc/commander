@@ -32,16 +32,6 @@ module Commander
     attr_accessor :trace
 
     module Builder
-      # TODO: Eventually store this operations on the base class
-      # and replay them on the runner
-      %w(
-        default_command
-      ).each do |method|
-        define_method(method) do |*args, &block|
-          instance.send(method, *args, &block)
-        end
-      end
-
       ##
       # Wrapper run command with error handling
       def run!
@@ -49,6 +39,7 @@ module Commander
         instance.instance_variable_set(:@aliases, aliases)
         instance.instance_variable_set(:@program, @program)
         instance.instance_variable_set(:@options, global_options)
+        instance.instance_variable_set(:@default_command, default_command)
         instance.run
       rescue StandardError, Interrupt => e
         error_handler(instance, e, args.include?('--trace'))
@@ -103,6 +94,16 @@ module Commander
           @program[key]
         end
       end
+
+      ##
+      # Default command _name_ to be used when no other
+      # command is found in the arguments.
+
+      def default_command(name = nil)
+        @default_command = name unless name.nil?
+        @default_command
+      end
+
 
       ##
       # Hash of Command objects
@@ -287,14 +288,6 @@ module Commander
         yield @commands[name]
       end
       @commands[name]
-    end
-
-    ##
-    # Default command _name_ to be used when no other
-    # command is found in the arguments.
-
-    def default_command(name)
-      @default_command = name
     end
 
     ##
