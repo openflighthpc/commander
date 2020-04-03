@@ -48,8 +48,7 @@ module Commander
       ##
       # Wrapper run command with error handling
       def run!
-        instance.instance_variable_get(:@commands)
-                .merge!(commands)
+        instance.instance_variable_set(:@commands, commands)
         instance.run
       rescue StandardError, Interrupt => e
         error_handler(instance, e, args.include?('--trace'))
@@ -58,7 +57,17 @@ module Commander
       ##
       # Hash of Command objects
       def commands
-        @commands ||= {}
+        @commands ||= {
+          'help' => Command.new('help').tap do |c|
+            c.syntax = "#{program(:name)} help [command]"
+            c.description = 'Display global or [command] help documentation'
+            c.example 'Display global help', "#{program(:name)} help"
+            c.example "Display help for 'foo'", "#{program(:name)} help foo"
+            c.when_called do |args, _options|
+              instance.run_help_command(args)
+            end
+          end
+        }
       end
 
       def command(name)
@@ -128,7 +137,6 @@ module Commander
       @commands, @aliases, @options = {}, {}, []
       @help_formatter_aliases = help_formatter_alias_defaults
       @program = program_defaults
-      create_default_commands
     end
 
     ##
@@ -357,33 +365,24 @@ module Commander
     ##
     # Creates default commands such as 'help' which is
     # essentially the same as using the --help switch.
-
-    def create_default_commands
-      command :help do |c|
-        c.syntax = "#{program(:name)} help [command]"
-        c.description = 'Display global or [command] help documentation'
-        c.example 'Display global help', "#{program(:name)} help"
-        c.example "Display help for 'foo'", "#{program(:name)} help foo"
-        c.when_called do |args, _options|
-          UI.enable_paging if program(:help_paging)
-          @help_commands = @commands.dup
-          if args.empty? || args[0] == :error
-            @help_commands.reject! { |k, v| !!v.hidden }
-            old_wrap = $terminal.wrap_at
-            $terminal.wrap_at = nil
-            program(:nobanner, true) if args[0] == :error
-            say help_formatter.render
-            $terminal.wrap_at = old_wrap
-          else
-            command = command args.join(' ')
-            require_valid_command command
-            if command.sub_command_group?
-              limit_commands_to_subcommands(command)
-              say help_formatter.render_subcommand(command)
-            else
-              say help_formatter.render_command(command)
-            end
-          end
+    def run_help_command(args)
+      UI.enable_paging if program(:help_paging)
+      @help_commands = @commands.dup
+      if args.empty? || args[0] == :error
+        @help_commands.reject! { |k, v| !!v.hidden }
+        old_wrap = $terminal.wrap_at
+        $terminal.wrap_at = nil
+        program(:nobanner, true) if args[0] == :error
+        say help_formatter.render
+        $terminal.wrap_at = old_wrap
+      else
+        command = command args.join(' ')
+        require_valid_command command
+        if command.sub_command_group?
+          limit_commands_to_subcommands(command)
+          say help_formatter.render_subcommand(command)
+        else
+          say help_formatter.render_command(command)
         end
       end
     end
