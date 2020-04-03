@@ -75,43 +75,43 @@ module Commander
     attr_accessor :trace
 
     module Builder
+      # TODO: Eventually store this operations on the base class
+      # and replay them on the runner
       %w(
         command
         program
-        run!
         global_option
         alias_command
         default_command
-      ).each do |meth|
-        eval <<-END, binding, __FILE__, __LINE__
-          def #{meth}(*args, &block)
-            ::Commander::Runner.instance.#{meth}(*args, &block)
-          end
-        END
+      ).each do |method|
+        define_method(method) do |*args, &block|
+          instance.send(method, *args, &block)
+        end
+      end
+
+      ##
+      # Wrapper run command with error handling
+      def run!
+        instance.run
+      rescue StandardError, Interrupt => e
+        ERROR_HANDLER.call(self, e, trace)
+      end
+
+      private
+
+      # TODO: Eventually make this method dynamically within run
+      def instance
+        @instance ||= Runner.new(
+          args: ARGV
+        )
       end
     end
 
-    def initialize(args = ARGV)
+    def initialize(args:)
       @args, @commands, @aliases, @options = args, {}, {}, []
       @help_formatter_aliases = help_formatter_alias_defaults
       @program = program_defaults
       create_default_commands
-    end
-
-    ##
-    # Return singleton Runner instance.
-
-    def self.instance
-      @singleton ||= new
-    end
-
-
-    ##
-    # Wrapper run command with error handling
-    def run!
-      run
-    rescue StandardError, Interrupt => e
-      ERROR_HANDLER.call(self, e, trace)
     end
 
     ##
