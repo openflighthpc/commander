@@ -1,5 +1,5 @@
 require 'commander'
 
-include Commander::Methods
+extend Commander::CLI
 
-at_exit { run! }
+at_exit { run!(ARGV) }
