@@ -468,7 +468,9 @@ module Commander
         unless active_command.nil?
           active_command.proxy_options << [Runner.switch_to_sym(switches.last), value]
         end
-        yield value if block && !value.nil?
+        if block && !value.nil?
+          instance_exec(value, &block)
+        end
       end
     end
 
