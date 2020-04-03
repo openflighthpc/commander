@@ -9,7 +9,8 @@ module Commander
       )
       instance.run
     rescue StandardError, Interrupt => e
-      error_handler(instance, e, args.include?('--trace'))
+      $stderr.puts e.backtrace.reverse if args.include?('--trace')
+      error_handler(instance, e)
     end
 
     ##
@@ -96,7 +97,9 @@ module Commander
 
     ##
     # Add a global option; follows the same syntax as Command#option
-    # This would be used for switches such as --version, --trace, etc.
+    # This would be used for switches such as --version
+    # NOTE: --trace is special and does not appear in the help
+    # It is intended for debugging purposes
 
     def global_option(*args, &block)
       switches, description = Runner.separate_switches_from_description(*args)
@@ -132,8 +135,7 @@ module Commander
       aliases[alias_name.to_s] = args
     end
 
-    def error_handler(runner, e, trace)
-      $stderr.puts e.backtrace.reverse if trace
+    def error_handler(runner, e)
       error_msg = "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
       exit_code = e.respond_to?(:exit_code) ?  e.exit_code.to_i : 1
       case e
