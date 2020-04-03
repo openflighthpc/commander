@@ -89,11 +89,11 @@ module Commander
           global_option('-h', '--help', 'Display help documentation') do
             args = @args - %w(-h --help)
             command(:help).run(*args)
-            return
+            exit 0
           end
           global_option('--version', 'Display version information') do
             say version
-            return
+            exit 0
           end
         end
       end
