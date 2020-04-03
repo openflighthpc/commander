@@ -75,6 +75,20 @@ module Commander
     attr_accessor :trace
 
     module Builder
+      %w(
+        command
+        program
+        run!
+        global_option
+        alias_command
+        default_command
+      ).each do |meth|
+        eval <<-END, binding, __FILE__, __LINE__
+          def #{meth}(*args, &block)
+            ::Commander::Runner.instance.#{meth}(*args, &block)
+          end
+        END
+      end
     end
 
     def initialize(args = ARGV)
