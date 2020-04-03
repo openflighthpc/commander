@@ -25,7 +25,6 @@ require 'highline'
 $terminal = HighLine.new
 require 'commander/version'
 require 'commander/blank'
-require 'commander/user_interaction'
 require 'commander/core_ext'
 require 'commander/runner'
 require 'commander/command'
