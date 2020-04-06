@@ -2,7 +2,6 @@ require 'optparse'
 require 'commander/patches/implicit-short-tags'
 require 'commander/patches/decimal-integer'
 require 'commander/patches/validate_inputs'
-require 'commander/patches/option_defaults'
 require 'commander/patches/help_formatter_binding'
 require 'commander/patches/priority_sort'
 
@@ -122,17 +121,15 @@ module Commander
     #   c.option '--date [DATE]', Date
     #
 
-    # NOTE: This method is being patched to handle defaults differently
-    prepend Patches::OptionDefaults
-    def option(*args, &block)
+    def option(*args, default: nil, &block)
       switches, description = Runner.separate_switches_from_description(*args)
       proc = block || option_proc(switches)
       @options << {
         args: args,
         proc: proc,
         switches: switches,
-        description: description,
-      }
+        description: description
+      }.tap { |o| o[:default] = default unless default.nil? }
     end
 
     ##
