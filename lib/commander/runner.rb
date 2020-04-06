@@ -2,42 +2,6 @@ require 'paint'
 
 module Commander
   class Runner
-    DEFAULT_ERROR_HANDLER = lambda do |runner, e|
-      error_msg = "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
-      case e
-      when OptionParser::InvalidOption,
-           Commander::Runner::InvalidCommandError,
-           Commander::Patches::CommandUsageError
-        # Display the error message for a specific command. Most likely due to
-        # invalid command syntax
-        if cmd = runner.active_command
-          $stderr.puts error_msg
-          $stderr.puts "\nUsage:\n\n"
-          runner.command('help').run(cmd.name)
-        # Display the main app help text when called without `--help`
-        elsif runner.args_without_command_name.empty?
-          $stderr.puts "Usage:\n\n"
-          runner.command('help').run(:error)
-        # Display the main app help text when called with arguments. Mostly
-        # likely an invalid syntax error
-        else
-          $stderr.puts error_msg
-          $stderr.puts "\nUsage:\n\n"
-          runner.command('help').run(:error)
-        end
-      # Display the help text for sub command groups when called without `--help`
-      when SubCommandGroupError
-        if cmd = runner.active_command
-          $stderr.puts "Usage:\n\n"
-          runner.command('help').run(cmd.name)
-        end
-      # Catch all error message for all other issues
-      else
-        $stderr.puts error_msg
-      end
-      exit(1)
-    end
-
     #--
     # Exceptions
     #++
@@ -63,67 +27,37 @@ module Commander
     # Initialize a new command runner. Optionally
     # supplying _args_ for mocking, or arbitrary usage.
 
-    def initialize(args = ARGV)
-      @args, @commands, @aliases, @options = args, {}, {}, []
-      @help_formatter_aliases = help_formatter_alias_defaults
-      @program = program_defaults
-      @always_trace = false
-      @never_trace = false
-      @silent_trace = false
-      @error_handler = DEFAULT_ERROR_HANDLER
-      create_default_commands
-    end
-
     ##
-    # Return singleton Runner instance.
+    # Display the backtrace in the event of an error
+    attr_accessor :trace
 
-    def self.instance
-      @singleton ||= new
-    end
-
-    ##
-    # Run command parsing and execution process.
-
-    def run!
-      trace = @always_trace || false
-      require_program :version, :description
-      trap('INT') { abort program(:int_message) } if program(:int_message)
-      trap('INT') { program(:int_block).call } if program(:int_block)
-      global_option('-h', '--help', 'Display help documentation') do
-        args = @args - %w(-h --help)
-        command(:help).run(*args)
-        return
-      end
-      global_option('--version', 'Display version information') do
-        say version
-        return
-      end
-      global_option('--trace', 'Display backtrace when an error occurs') { trace = true } unless @never_trace || @always_trace
-      parse_global_options
-      remove_global_options options, @args
-      if trace
-        run_active_command
-      else
-        begin
-          run_active_command
-        rescue InvalidCommandError => e
-          error_handler&.call(self, e) ||
-            abort("#{e}. Use --help for more information")
-        rescue \
-          OptionParser::InvalidOption,
-          OptionParser::InvalidArgument,
-          OptionParser::MissingArgument => e
-          error_handler&.call(self, e) ||
-            abort(e.to_s)
-        rescue => e
-          error_handler&.call(self, e) ||
-            if @never_trace || @silent_trace
-              abort("error: #{e}.")
-            else
-              abort("error: #{e}. Use --trace to view backtrace")
-            end
+    def initialize(*inputs)
+      @program, @commands, @default_command, \
+        @options, @aliases, @args = inputs.map(&:dup)
+      @args.reject! { |a| a == '--trace' }
+      @commands['help'] ||= Command.new('help').tap do |c|
+        c.syntax = "#{program(:name)} help [command]"
+        c.description = 'Display global or [command] help documentation'
+        c.example 'Display global help', "#{program(:name)} help"
+        c.example "Display help for 'foo'", "#{program(:name)} help foo"
+        c.when_called do |help_args, _|
+          self.run_help_command(help_args)
         end
       end
+      @help_formatter_aliases = help_formatter_alias_defaults
+    end
+
+    ##
+    # Run command parsing and execution process
+    # NOTE: This method does not have error handling, see: run!
+
+    def run
+      require_program :version, :description
+
+      parse_global_options
+      remove_global_options options, @args
+
+      run_active_command
     end
 
     ##
@@ -134,83 +68,11 @@ module Commander
     end
 
     ##
-    # Enable tracing on all executions (bypasses --trace)
-
-    def always_trace!
-      @always_trace = true
-      @never_trace = false
-      @silent_trace = false
-    end
-
-    ##
-    # Hide the trace option from the help menus and don't add it as a global option
-
-    def never_trace!
-      @always_trace = false
-      @never_trace = true
-      @silent_trace = false
-    end
-
-    ##
-    # Includes the trace option in the help but not in the error message
-
-    def silent_trace!
-      @always_trace = false
-      @never_trace = false
-      @silent_trace = true
-    end
-
-    ##
-    # Set a handler to be used for advanced exception handling
-
-    def error_handler(&block)
-      @error_handler = block if block
-      @error_handler
-    end
-
-    ##
-    # Assign program information.
+    # The hash of program variables
     #
-    # === Examples
-    #
-    #   # Set data
-    #   program :name, 'Commander'
-    #   program :version, Commander::VERSION
-    #   program :description, 'Commander utility program.'
-    #   program :help, 'Copyright', '2008 TJ Holowaychuk'
-    #   program :help, 'Anything', 'You want'
-    #   program :int_message 'Bye bye!'
-    #   program :help_formatter, :compact
-    #   program :help_formatter, Commander::HelpFormatter::TerminalCompact
-    #
-    #   # Get data
-    #   program :name # => 'Commander'
-    #
-    # === Keys
-    #
-    #   :version         (required) Program version triple, ex: '0.0.1'
-    #   :description     (required) Program description
-    #   :name            Program name, defaults to basename of executable
-    #   :help_formatter  Defaults to Commander::HelpFormatter::Terminal
-    #   :help            Allows addition of arbitrary global help blocks
-    #   :help_paging     Flag for toggling help paging
-    #   :int_message     Message to display when interrupted (CTRL + C)
-    #
-
-    def program(key, *args, &block)
-      if key == :help && !args.empty?
-        @program[:help] ||= {}
-        @program[:help][args.first] = args.at(1)
-      elsif key == :help_formatter && !args.empty?
-        @program[key] = (@help_formatter_aliases[args.first] || args.first)
-      elsif block
-        @program[key] = block
-      else
-        unless args.empty?
-          @program[key] = args.count == 1 ? args[0] : args
-        end
-        @program[key]
-      end
+    def program(key, default = nil)
+      @program[key] ||= default if default
+      @program[key]
     end
 
     ##
@@ -227,47 +89,8 @@ module Commander
     #   end
     #
 
-    def command(name, &block)
-      yield add_command(Commander::Command.new(name)) if block
+    def command(name)
       @commands[name.to_s]
-    end
-
-    ##
-    # Add a global option; follows the same syntax as Command#option
-    # This would be used for switches such as --version, --trace, etc.
-
-    def global_option(*args, &block)
-      switches, description = Runner.separate_switches_from_description(*args)
-      @options << {
-        args: args,
-        proc: block,
-        switches: switches,
-        description: description,
-      }
-    end
-
-    ##
-    # Alias command _name_ with _alias_name_. Optionally _args_ may be passed
-    # as if they were being passed straight to the original command via the command-line.
-
-    def alias_command(alias_name, name, *args)
-      @commands[alias_name.to_s] = command name
-      @aliases[alias_name.to_s] = args
-    end
-
-    ##
-    # Default command _name_ to be used when no other
-    # command is found in the arguments.
-
-    def default_command(name)
-      @default_command = name
-    end
-
-    ##
-    # Add a command object to this runner.
-
-    def add_command(command)
-      @commands[command.name] = command
     end
 
     ##
@@ -337,17 +160,6 @@ module Commander
     end
 
     ##
-    # Returns hash of program defaults.
-
-    def program_defaults
-      {
-        help_formatter: HelpFormatter::Terminal,
-        name: File.basename($PROGRAM_NAME),
-        help_paging: true,
-      }
-    end
-
-    ##
     # Limit commands to those which are subcommands of the one that is active
     def limit_commands_to_subcommands(command)
       commands.select! do |other_sym, _|
@@ -368,39 +180,25 @@ module Commander
     ##
     # Creates default commands such as 'help' which is
     # essentially the same as using the --help switch.
-
-    def create_default_commands
-      command :help do |c|
-        c.syntax = "#{program(:name)} help [command]"
-        c.description = 'Display global or [command] help documentation'
-        c.example 'Display global help', "#{program(:name)} help"
-        c.example "Display help for 'foo'", "#{program(:name)} help foo"
-        c.when_called do |args, _options|
-          UI.enable_paging if program(:help_paging)
-          @help_commands = @commands.dup
-          if args.empty? || args[0] == :error
-            @help_options = @options.reject {|o| o[:switches].first == '--trace'}
-            @help_commands.reject! { |k, v| !!v.hidden }
-            old_wrap = $terminal.wrap_at
-            $terminal.wrap_at = nil
-            program(:nobanner, true) if args[0] == :error
-            say help_formatter.render
-            $terminal.wrap_at = old_wrap
-          else
-            command = command args.join(' ')
-            begin
-              require_valid_command command
-            rescue InvalidCommandError => e
-              error_handler&.call(self, e) ||
-                abort("#{e}. Use --help for more information")
-            end
-            if command.sub_command_group?
-              limit_commands_to_subcommands(command)
-              say help_formatter.render_subcommand(command)
-            else
-              say help_formatter.render_command(command)
-            end
-          end
+    def run_help_command(args)
+      UI.enable_paging if program(:help_paging)
+      @help_commands = @commands.dup
+      if args.empty? || args[0] == :error
+        @help_options = @options
+        @help_commands.reject! { |k, v| !!v.hidden }
+        old_wrap = $terminal.wrap_at
+        $terminal.wrap_at = nil
+        program(:nobanner, true) if args[0] == :error
+        say help_formatter.render
+        $terminal.wrap_at = old_wrap
+      else
+        command = command args.join(' ')
+        require_valid_command command
+        if command.sub_command_group?
+          limit_commands_to_subcommands(command)
+          say help_formatter.render_subcommand(command)
+        else
+          say help_formatter.render_command(command)
         end
       end
     end
@@ -487,7 +285,9 @@ module Commander
         unless active_command.nil?
           active_command.proxy_options << [Runner.switch_to_sym(switches.last), value]
         end
-        yield value if block && !value.nil?
+        if block && !value.nil?
+          instance_exec(value, &block)
+        end
       end
     end
 
