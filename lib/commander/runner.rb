@@ -308,11 +308,12 @@ module Commander
 
     def run_active_command
       require_valid_command
-      if alias? command_name_from_args
-        active_command.run(*(@aliases[command_name_from_args.to_s] + args_without_command_name))
+      call_args = if alias? command_name_from_args
+        @aliases[command_name_from_args.to_s] + args_without_command_name
       else
-        active_command.run(*args_without_command_name)
+        args_without_command_name
       end
+      active_command.run(program(:config), call_args)
     rescue  OptionParser::InvalidOption,
             Command::CommandUsageError,
             Commander::Runner::InvalidCommandError => e

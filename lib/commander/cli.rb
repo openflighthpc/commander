@@ -38,6 +38,7 @@ module Commander
     #   :version         (required) Program version triple, ex: '0.0.1'
     #   :description     (required) Program description
     #   :name            Program name, defaults to basename of executable
+    #   :config          An optional argument to be passed into the action
     #   :help_formatter  Defaults to Commander::HelpFormatter::Terminal
     #   :help            Allows addition of arbitrary global help blocks
     #   :help_paging     Flag for toggling help paging

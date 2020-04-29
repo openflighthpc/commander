@@ -8,7 +8,7 @@ module Commander
     class CommandUsageError < StandardError; end
 
     attr_accessor :name, :examples, :syntax, :description, :priority
-    attr_accessor :summary, :proxy_options, :options, :config
+    attr_accessor :summary, :proxy_options, :options
 
     ##
     # Options struct.
@@ -140,7 +140,7 @@ module Commander
     # === Examples
     #
     #   # Simple block handling
-    #   c.when_called do |args, options|
+    #   c.when_called do |args, options, config|
     #      # do something
     #   end
     #
@@ -170,7 +170,7 @@ module Commander
     # * invokes when_called proc
     #
 
-    def run(args_and_opts = [])
+    def run(config, args_and_opts)
       args = if skip_option_parsing(false)
         args_and_opts
       else
