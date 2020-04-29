@@ -161,14 +161,6 @@ module Commander
         end
         # See: https://shapeshed.com/unix-exit-codes/
         exit_code = 126
-      # Display the help text for sub command groups when called without `--help`
-      when SubCommandGroupError
-        if cmd = runner.active_command
-          $stderr.puts "Usage:\n\n"
-          runner.command('help').run(cmd.name)
-        end
-        # See: https://shapeshed.com/unix-exit-codes/
-        exit_code = 126
       when Interrupt
         $stderr.puts 'Received Interrupt!'
         # See: https://shapeshed.com/unix-exit-codes/

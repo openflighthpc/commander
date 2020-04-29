@@ -160,24 +160,6 @@ module Commander
     end
 
     ##
-    # Limit commands to those which are subcommands of the one that is active
-    def limit_commands_to_subcommands(command)
-      commands.select! do |other_sym, _|
-        other = other_sym.to_s
-        # Do not match sub-sub commands (matches for a second space)
-        if /\A#{command.name}\s.*\s/.match?(other)
-          false
-        # Do match regular sub commands
-        elsif /\A#{command.name}\s/.match?(other)
-          true
-        # Do not match any other commands
-        else
-          false
-        end
-      end
-    end
-
-    ##
     # Creates default commands such as 'help' which is
     # essentially the same as using the --help switch.
     def run_help_command(args)
@@ -194,12 +176,7 @@ module Commander
       else
         command = command args.join(' ')
         require_valid_command command
-        if command.sub_command_group?
-          limit_commands_to_subcommands(command)
-          say help_formatter.render_subcommand(command)
-        else
-          say help_formatter.render_command(command)
-        end
+        say help_formatter.render_command(command)
       end
     end
 
