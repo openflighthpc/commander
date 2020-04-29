@@ -84,12 +84,14 @@ module Commander
 
     ##
     # Hash of Global Options
+    #
     def global_options
       @global_options ||= begin
         @global_options = [] # Allows Recursive - Refactor
         global_option('-h', '--help', 'Display help documentation') do
           args = @args - %w(-h --help)
-          command(:help).run(*args)
+          # TODO: Pass the actual config in here
+          command(:help).run({}, args)
           exit 0
         end
         global_option('--version', 'Display version information') do

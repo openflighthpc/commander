@@ -147,7 +147,7 @@ module Commander
     def args_without_command_name
       removed = []
       parts = command_name_from_args.split rescue []
-      @args.dup.delete_if do |arg|
+      @args.reject do |arg|
         removed << arg if parts.include?(arg) && !removed.include?(arg)
       end
     end
@@ -319,7 +319,7 @@ module Commander
             Commander::Runner::InvalidCommandError => e
       error = InternalCallableError.new(e.message) do
         $stderr.puts "\nUsage:\n\n"
-        command('help').run(active_command&.name || :error)
+        command('help').run(program(:config), active_command&.name || :error)
       end
       raise error
     end
