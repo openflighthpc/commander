@@ -23,6 +23,8 @@
 
 require 'highline'
 $terminal = HighLine.new
+
+require 'commander/error_handler'
 require 'commander/version'
 require 'commander/blank'
 require 'commander/core_ext'

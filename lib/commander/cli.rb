@@ -1,22 +1,4 @@
 module Commander
-  ##
-  # Internal error class to delay rendering help text
-  # This is required as the help command pints directly to stdout
-  # In general this has a bit of a code smell to it, and should
-  # not be used publicly
-  class InternalCallableError < StandardError
-    attr_accessor :callable
-
-    def initialize(msg = nil, &block)
-      super(msg)
-      self.callable = block
-    end
-
-    def call
-      callable.call
-    end
-  end
-
   module CLI
     ##
     # Wrapper run command with error handling
@@ -28,7 +10,20 @@ module Commander
       instance.run
     rescue StandardError, Interrupt => e
       $stderr.puts e.backtrace.reverse if args.include?('--trace')
-      error_handler(instance, e)
+      painted = e.exception("#{Paint[@program[:name], '#2794d8']}: #{Paint[e.to_s, :red, :bright]}")
+      if disable_error_handler(false)
+        raise painted
+      else
+        Commander.error_handler { raise painted }
+      end
+    end
+
+    ##
+    # Use to disable to error handling within the CLI class
+    # This is mainly used to start the error handler early in the bin file
+    def disable_error_handler(fetch = true)
+      @disable_error_handler ||= fetch
+      @disable_error_handler
     end
 
     ##
@@ -151,25 +146,6 @@ module Commander
     def alias_command(alias_name, name, *args)
       commands[alias_name.to_s] = command name
       aliases[alias_name.to_s] = args
-    end
-
-    def error_handler(_, e)
-      error_msg = "#{Paint[@program[:name], '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
-      exit_code = e.respond_to?(:exit_code) ?  e.exit_code.to_i : 1
-      case e
-      when InternalCallableError
-        # See: https://shapeshed.com/unix-exit-codes/
-        exit_code = 126
-        $stderr.puts error_msg
-        e.call
-      when Interrupt
-        $stderr.puts 'Received Interrupt!'
-        # See: https://shapeshed.com/unix-exit-codes/
-        exit_code = 130
-      else
-        $stderr.puts error_msg
-      end
-      exit(exit_code)
     end
   end
 end
