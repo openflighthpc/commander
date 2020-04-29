@@ -153,8 +153,8 @@ module Commander
       aliases[alias_name.to_s] = args
     end
 
-    def error_handler(runner, e)
-      error_msg = "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
+    def error_handler(_, e)
+      error_msg = "#{Paint[@program[:name], '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
       exit_code = e.respond_to?(:exit_code) ?  e.exit_code.to_i : 1
       case e
       when InternalCallableError
