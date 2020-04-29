@@ -2,7 +2,6 @@ require 'optparse'
 require 'commander/patches/implicit-short-tags'
 require 'commander/patches/decimal-integer'
 require 'commander/patches/validate_inputs'
-require 'commander/patches/help_formatter_binding'
 require 'commander/patches/priority_sort'
 
 OptionParser.prepend Commander::Patches::ImplicitShortTags
