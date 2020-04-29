@@ -195,11 +195,11 @@ module Commander
     def parse_options_and_call_procs(*args)
       options = []
       parser = @options.each_with_object(OptionParser.new) do |option, p|
-        switches = *option[:args]
-        p.on(*option[:args]) do |value|
+        switches = *option[:switches]
+        p.on(*option[:args]) do |value, _|
           options << [Runner.switch_to_sym(switches.last), value]
         end
-        opts
+        p
       end
       default_opt = @options.each_with_object([]) do |h, arr|
         if h.key?(:default)
