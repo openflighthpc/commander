@@ -144,12 +144,6 @@ module Commander
     #      # do something
     #   end
     #
-    #   # Create inst of Something and pass args / options
-    #   c.when_called MyLib::Command::Something
-    #
-    #   # Create inst of Something and use arbitrary method
-    #    c.when_called MyLib::Command::Something, :some_method
-    #
     #   # Pass an object to handle callback (requires method symbol)
     #   c.when_called SomeObject, :some_method
     #
@@ -202,14 +196,7 @@ module Commander
       end
 
       callee = @when_called.dup
-      object = callee.shift
-      meth = callee.shift || :call
-      options = proxy_option_struct
-      case object
-      when Proc then object.call(args, options)
-      when Class then meth != :call ? object.new.send(meth, args, options) : object.new(args, options)
-      else object.send(meth, args, options) if object
-      end
+      callee.shift&.send(callee.shift || :call, args, proxy_option_struct)
     end
 
     ##
