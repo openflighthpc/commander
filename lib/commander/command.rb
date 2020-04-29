@@ -1,18 +1,13 @@
 require 'optparse'
 require 'commander/patches/implicit-short-tags'
-require 'commander/patches/decimal-integer'
-require 'commander/patches/validate_inputs'
-require 'commander/patches/priority_sort'
 
 OptionParser.prepend Commander::Patches::ImplicitShortTags
-OptionParser.prepend Commander::Patches::DecimalInteger
 
 module Commander
   class Command
-    prepend Patches::ValidateInputs
-    prepend Patches::PrioritySort
+    class CommandUsageError < StandardError; end
 
-    attr_accessor :name, :examples, :syntax, :description
+    attr_accessor :name, :examples, :syntax, :description, :priority
     attr_accessor :summary, :proxy_options, :options, :hidden
 
     ##
@@ -48,6 +43,19 @@ module Commander
     def initialize(name)
       @name, @examples, @when_called = name.to_s, [], []
       @options, @proxy_options = [], []
+    end
+
+    # Allows the commands to be sorted via priority
+    def <=>(other)
+      # Different classes can not be compared and thus are considered
+      # equal in priority
+      return 0 unless self.class == other.class
+
+      # Sort firstly based on the commands priority
+      comp = (self.priority || 0) <=> (other.priority || 0)
+
+      # Fall back on name comparison if priority is equal
+      comp == 0 ? self.name <=> other.name : comp
     end
 
     ##
@@ -188,6 +196,11 @@ module Commander
     # Call the commands when_called block with _args_.
 
     def call(args = [])
+      # Verifies there is enough args
+      unless syntax_parts[0..1] == ['commander', 'help']
+        assert_correct_number_of_args!(args)
+      end
+
       callee = @when_called.dup
       object = callee.shift
       meth = callee.shift || :call
@@ -223,6 +236,56 @@ module Commander
 
     def inspect
       "<Commander::Command:#{name}>"
+    end
+
+    def assert_correct_number_of_args!(args)
+      return if primary_command_word == 'help'
+      too_many = too_many_args?(args)
+      if too_many
+        raise CommandUsageError, "unrecognised command. Please select from the following:"
+      elsif too_many
+        raise CommandUsageError, "excess arguments for command '#{primary_command_word}'"
+      elsif too_few_args?(args)
+        raise CommandUsageError, "insufficient arguments for command '#{primary_command_word}'"
+      end
+    end
+
+    def syntax_parts
+      @syntax_parts ||= syntax.split.tap do |parts|
+        while part = parts.shift do
+          break if part == primary_command_word || parts.length == 0
+        end
+      end
+    end
+
+    def primary_command_word
+      name.split.last
+    end
+
+    def total_argument_count
+      syntax_parts.length
+    end
+
+    def optional_argument_count
+      syntax_parts.select do |part|
+        part[0] == '[' && part[-1] == ']'
+      end.length
+    end
+
+    def variable_arg?
+      syntax_parts.any? {|part| part[-4..-1] == '...]' || part[-3..-1] == '...'}
+    end
+
+    def required_argument_count
+      total_argument_count - optional_argument_count
+    end
+
+    def too_many_args?(args)
+      !variable_arg? && args.length > total_argument_count
+    end
+
+    def too_few_args?(args)
+      args.length < required_argument_count
     end
   end
 end

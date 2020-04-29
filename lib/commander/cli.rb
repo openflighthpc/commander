@@ -141,7 +141,7 @@ module Commander
       case e
       when OptionParser::InvalidOption,
            Commander::Runner::InvalidCommandError,
-           Commander::Patches::CommandUsageError
+           Commander::Command::CommandUsageError
         # Display the error message for a specific command. Most likely due to
         # invalid command syntax
         if cmd = runner.active_command

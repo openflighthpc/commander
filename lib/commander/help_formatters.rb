@@ -9,9 +9,6 @@ module Commander
         @target = target
       end
 
-      # NOTE: `get_binding` has been stubbed! This version will be ignored
-      # See patch for actual version
-      prepend Patches::HelpFormatterBinding
       def get_binding
         @target.instance_eval { binding }.tap do |bind|
           decorate_binding(bind)
