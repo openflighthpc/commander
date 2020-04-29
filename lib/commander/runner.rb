@@ -34,7 +34,7 @@ module Commander
     def initialize(*inputs)
       @program, @commands, @default_command, \
         @options, @aliases, @args = inputs.map(&:dup)
-      @args.reject! { |a| a == '--trace' }
+
       @commands['help'] ||= Command.new('help').tap do |c|
         c.syntax = "#{program(:name)} help [command]"
         c.description = 'Display global or [command] help documentation'
@@ -49,7 +49,6 @@ module Commander
 
     ##
     # Run command parsing and execution process
-    # NOTE: This method does not have error handling, see: run!
 
     def run
       require_program :version, :description
@@ -58,6 +57,9 @@ module Commander
       remove_global_options options, @args
 
       run_active_command
+    rescue => e
+      msg = "#{Paint[program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
+      raise e.exception(msg)
     end
 
     ##

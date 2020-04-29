@@ -17,9 +17,25 @@ module Commander
     end
   end
 
-  def self.trace?(args)
-    last = args.index('--') || args.length
-    args[0..last].include?('--trace')
+  def self.traceable_error_handler(*args)
+    # Determines if there is a --trace flag before a --
+    trace_index = args.index do |a|
+      if a == '--trace'
+        true
+      elsif a == '--'
+        break
+      else
+        false
+      end
+    end
+
+    # Removes the --trace flag if required
+    new_args = args.dup
+    new_args.delete_at(trace_index) if trace_index
+
+    error_handler(!!trace_index) do
+      yield(new_args) if block_given?
+    end
   end
 
   def self.error_handler(trace = false)

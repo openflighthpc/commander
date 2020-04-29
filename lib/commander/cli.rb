@@ -3,19 +3,21 @@ module Commander
     ##
     # Wrapper run command with error handling
     def run!(*args)
+      if disable_error_handler(false)
+        run(*args)
+      else
+        Commander.traceable_error_handler(*args) do |new_args|
+          run(*new_args)
+        end
+      end
+    end
+
+    def run(*args)
       instance = Runner.new(
         @program, commands, default_command,
         global_options, aliases, args
       )
       instance.run
-    rescue StandardError, Interrupt => e
-      painted = e.exception("#{Paint[@program[:name], '#2794d8']}: #{Paint[e.to_s, :red, :bright]}")
-      if disable_error_handler(false)
-        raise painted
-      else
-        trace = Commander.trace?(args)
-        Commander.error_handler(trace) { raise painted }
-      end
     end
 
     ##
