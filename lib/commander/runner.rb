@@ -72,19 +72,15 @@ module Commander
 
     ##
     # Run command parsing and execution process
+    INBUILT_ERRORS = [
+      OptionParser::InvalidOption,
+      Command::CommandUsageError,
+      InvalidCommandError
+    ]
 
     def run
       require_program :version, :description
-      run_active_command
-    rescue => e
-      msg = "#{Paint[program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
-      raise e.exception(msg)
-    end
 
-    ##
-    # Run the active command.
-
-    def run_active_command
       # Determine where the arguments/ options start
       args_opts = if alias? command_name_from_args
         @aliases[command_name_from_args.to_s] + args_without_command_name
@@ -107,20 +103,33 @@ module Commander
       opts = Command::Options.build(parser.opts)
       config = program(:config).dup
 
-      # Verifies there are enough arguments
-      active_command.assert_correct_number_of_args!(args)
+      # Runs the help
+      if opts.version
+        say version
+        exit 0
+      elsif opts.help
+        run_help_command([active_command.name])
+      # Runs the Action
+      else
+        # Verifies there are enough arguments
+        active_command.assert_correct_number_of_args!(args)
 
-      # Runs the action
-      callee = active_command.instance_variable_get(:@when_called).dup
-      callee.shift&.send(callee.shift || :call, args, opts)
-    rescue  OptionParser::InvalidOption,
-            Command::CommandUsageError,
-            Commander::Runner::InvalidCommandError => e
-      error = InternalCallableError.new(e.message) do
-        $stderr.puts "\nUsage:\n\n"
-        command('help').run(program(:config), active_command&.name || :error)
+        # Runs the action
+        callee = active_command.instance_variable_get(:@when_called).dup
+        callee.shift&.send(callee.shift || :call, args, opts, config)
       end
-      raise error
+    rescue => e
+      msg = "#{Paint[program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
+      new_error = e.exception(msg)
+
+      if INBUILT_ERRORS.include?(new_error.class)
+        new_error = InternalCallableError.new(e.message) do
+          $stderr.puts "\nUsage:\n\n"
+          name = command(command_name_from_args)&.name || :error
+          run_help_command([name])
+        end
+      end
+      raise new_error
     end
 
     ##
@@ -176,7 +185,7 @@ module Commander
     # Get active command within arguments passed to this runner.
 
     def active_command
-      @__active_command ||= command(command_name_from_args).tap do |cmd|
+      @__active_command ||= command(command_name_from_args || 'help').tap do |cmd|
         require_valid_command(cmd)
       end
     end
