@@ -1,4 +1,22 @@
 module Commander
+  ##
+  # Internal error class to delay rendering help text
+  # This is required as the help command pints directly to stdout
+  # In general this has a bit of a code smell to it, and should
+  # not be used publicly
+  class InternalCallableError < StandardError
+    attr_accessor :callable
+
+    def initialize(msg = nil, &block)
+      super(msg)
+      self.callable = block
+    end
+
+    def call
+      callable.call
+    end
+  end
+
   module CLI
     ##
     # Wrapper run command with error handling
@@ -139,33 +157,15 @@ module Commander
       error_msg = "#{Paint[runner.program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
       exit_code = e.respond_to?(:exit_code) ?  e.exit_code.to_i : 1
       case e
-      when OptionParser::InvalidOption,
-           Commander::Runner::InvalidCommandError,
-           Commander::Command::CommandUsageError
-        # Display the error message for a specific command. Most likely due to
-        # invalid command syntax
-        if cmd = runner.active_command
-          $stderr.puts error_msg
-          $stderr.puts "\nUsage:\n\n"
-          runner.command('help').run(cmd.name)
-        # Display the main app help text when called without `--help`
-        elsif runner.args_without_command_name.empty?
-          $stderr.puts "Usage:\n\n"
-          runner.command('help').run(:error)
-        # Display the main app help text when called with arguments. Mostly
-        # likely an invalid syntax error
-        else
-          $stderr.puts error_msg
-          $stderr.puts "\nUsage:\n\n"
-          runner.command('help').run(:error)
-        end
+      when InternalCallableError
         # See: https://shapeshed.com/unix-exit-codes/
         exit_code = 126
+        $stderr.puts error_msg
+        e.call
       when Interrupt
         $stderr.puts 'Received Interrupt!'
         # See: https://shapeshed.com/unix-exit-codes/
         exit_code = 130
-      # Catch all error message for all other issues
       else
         $stderr.puts error_msg
       end

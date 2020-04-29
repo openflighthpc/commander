@@ -312,6 +312,14 @@ module Commander
       else
         active_command.run(*args_without_command_name)
       end
+    rescue  OptionParser::InvalidOption,
+            Command::CommandUsageError,
+            Commander::Runner::InvalidCommandError => e
+      error = InternalCallableError.new(e.message) do
+        $stderr.puts "\nUsage:\n\n"
+        command('help').run(active_command&.name || :error)
+      end
+      raise error
     end
 
     def say(*args) #:nodoc:
