@@ -17,6 +17,8 @@ module Commander
     end
   end
 
+  INTERRUPT_MSG = 'Received Interrupt!'
+
   def self.traceable_error_handler(*args)
     # Determines if there is a --trace flag before a --
     trace_index = args.index do |a|
@@ -33,9 +35,15 @@ module Commander
     new_args = args.dup
     new_args.delete_at(trace_index) if trace_index
 
+    # Start the actual error handler
     error_handler(!!trace_index) do
       yield(new_args) if block_given?
     end
+
+  rescue Interrupt
+    # Start Rescuing Interrupt Immediately
+    $stderr.puts INTERRUPT_MSG
+    exit 130
   end
 
   def self.error_handler(trace = false)
@@ -52,7 +60,7 @@ module Commander
       $stderr.puts error_msg
       e.call
     when Interrupt
-      $stderr.puts 'Received Interrupt!'
+      $stderr.puts INTERRUPT_MSG
       # See: https://shapeshed.com/unix-exit-codes/
       exit_code = 130
     else
