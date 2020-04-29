@@ -3,12 +3,8 @@ module Commander
     ##
     # Wrapper run command with error handling
     def run!(*args)
-      if disable_error_handler(false)
-        run(*args)
-      else
-        Commander.traceable_error_handler(*args) do |new_args|
-          run(*new_args)
-        end
+      Commander.traceable_error_handler(*args) do |new_args|
+        run(*new_args)
       end
     end
 
@@ -18,14 +14,6 @@ module Commander
         global_options, aliases, args
       )
       instance.run
-    end
-
-    ##
-    # Use to disable to error handling within the CLI class
-    # This is mainly used to start the error handler early in the bin file
-    def disable_error_handler(fetch = true)
-      @disable_error_handler ||= fetch
-      @disable_error_handler
     end
 
     ##
