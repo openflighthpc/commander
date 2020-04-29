@@ -16,6 +16,15 @@ module Commander
     class Options
       include Blank
 
+      def self.build(opts)
+        opts.each_with_object(new) do |(option, value), options|
+          # options that are present will evaluate to true
+          value = true if value.nil?
+          options.__send__ :"#{option}=", value
+          options
+        end
+      end
+
       def initialize
         @table = {}
       end
@@ -158,72 +167,6 @@ module Commander
 
     def skip_option_parsing(set = true)
       @skip_option_parsing ||= set
-    end
-
-    ##
-    # Run the command with _args_.
-    #
-    # * parses options, call option blocks
-    # * invokes when_called proc
-    #
-
-    def run(config, args_and_opts)
-      args, opts = if skip_option_parsing(false)
-        [args_and_opts, []]
-      else
-        parse_options_and_call_procs(*args_and_opts)
-      end
-
-      # Verifies there is enough args
-      unless syntax_parts[0..1] == ['commander', 'help']
-        assert_correct_number_of_args!(args)
-      end
-
-      # Builds the options struct
-      struct = build_options_struct(opts)
-
-      callee = @when_called.dup
-      callee.shift&.send(callee.shift || :call, args, struct, config.dup)
-    end
-
-    #:stopdoc:
-
-    ##
-    # Parses options and calls associated procs,
-    # returning the arguments remaining.
-
-    def parse_options_and_call_procs(*args)
-      options = []
-      parser = @options.each_with_object(OptionParser.new) do |option, p|
-        switches = *option[:switches]
-        p.on(*option[:args]) do |value, _|
-          options << [Runner.switch_to_sym(switches.last), value]
-        end
-        p
-      end
-      default_opt = @options.each_with_object([]) do |h, arr|
-        if h.key?(:default)
-          arr.push(h[:switches][0].split[0])
-          arr.push(h[:default].to_s)
-        end
-      end
-      parser.parse! default_opt
-      remaining = parser.parse! args
-      [remaining, options]
-    end
-
-
-    ##
-    # Creates an Options instance populated with the option values
-    # collected by the #option_proc.
-
-    def build_options_struct(opts)
-      opts.each_with_object(Options.new) do |(option, value), options|
-        # options that are present will evaluate to true
-        value = true if value.nil?
-        options.__send__ :"#{option}=", value
-        options
-      end
     end
 
     def inspect
