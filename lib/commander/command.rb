@@ -155,14 +155,35 @@ module Commander
     alias action when_called
 
     ##
+    # Causes the option parsing to be skipped. The flags will be passed
+    # down within the args instead
+    #
+
+    def skip_option_parsing(set = true)
+      @skip_option_parsing ||= set
+    end
+
+    ##
     # Run the command with _args_.
     #
     # * parses options, call option blocks
     # * invokes when_called proc
     #
 
-    def run(*args)
-      call parse_options_and_call_procs(*args)
+    def run(args_and_opts = [])
+      args = if skip_option_parsing(false)
+        args_and_opts
+      else
+        parse_options_and_call_procs(*args_and_opts)
+      end
+
+      # Verifies there is enough args
+      unless syntax_parts[0..1] == ['commander', 'help']
+        assert_correct_number_of_args!(args)
+      end
+
+      callee = @when_called.dup
+      callee.shift&.send(callee.shift || :call, args, proxy_option_struct, config.dup)
     end
 
     #:stopdoc:
@@ -186,18 +207,6 @@ module Commander
       opt.parse! args
     end
 
-    ##
-    # Call the commands when_called block with _args_.
-
-    def call(args = [])
-      # Verifies there is enough args
-      unless syntax_parts[0..1] == ['commander', 'help']
-        assert_correct_number_of_args!(args)
-      end
-
-      callee = @when_called.dup
-      callee.shift&.send(callee.shift || :call, args, proxy_option_struct, config.dup)
-    end
 
     ##
     # Creates an Options instance populated with the option values
