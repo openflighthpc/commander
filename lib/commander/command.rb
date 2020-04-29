@@ -8,7 +8,7 @@ module Commander
     class CommandUsageError < StandardError; end
 
     attr_accessor :name, :examples, :syntax, :description, :priority
-    attr_accessor :summary, :proxy_options, :options
+    attr_accessor :summary, :options
 
     ##
     # Options struct.
@@ -42,7 +42,7 @@ module Commander
 
     def initialize(name)
       @name, @examples, @when_called = name.to_s, [], []
-      @options, @proxy_options = [], []
+      @options = []
     end
 
     # Allows the commands to be sorted via priority
@@ -95,7 +95,6 @@ module Commander
     #   command :something do |c|
     #     c.option '--recursive', 'Do something recursively'
     #     c.option '--file FILE', 'Specify a file'
-    #     c.option('--info', 'Display info') { puts "handle with block" }
     #     c.option '--[no-]feature', 'With or without feature'
     #     c.option '--list FILES', Array, 'List the files specified'
     #
@@ -124,10 +123,8 @@ module Commander
 
     def option(*args, default: nil, &block)
       switches, description = Runner.separate_switches_from_description(*args)
-      proc = block || option_proc(switches)
       @options << {
         args: args,
-        proc: proc,
         switches: switches,
         description: description
       }.tap { |o| o[:default] = default unless default.nil? }
@@ -171,8 +168,8 @@ module Commander
     #
 
     def run(config, args_and_opts)
-      args = if skip_option_parsing(false)
-        args_and_opts
+      args, opts = if skip_option_parsing(false)
+        [args_and_opts, []]
       else
         parse_options_and_call_procs(*args_and_opts)
       end
@@ -182,8 +179,11 @@ module Commander
         assert_correct_number_of_args!(args)
       end
 
+      # Builds the options struct
+      struct = build_options_struct(opts)
+
       callee = @when_called.dup
-      callee.shift&.send(callee.shift || :call, args, proxy_option_struct, config.dup)
+      callee.shift&.send(callee.shift || :call, args, struct, config.dup)
     end
 
     #:stopdoc:
@@ -193,8 +193,12 @@ module Commander
     # returning the arguments remaining.
 
     def parse_options_and_call_procs(*args)
-      opt = @options.each_with_object(OptionParser.new) do |option, opts|
-        opts.on(*option[:args], &option[:proc])
+      options = []
+      parser = @options.each_with_object(OptionParser.new) do |option, p|
+        switches = *option[:args]
+        p.on(*option[:args]) do |value|
+          options << [Runner.switch_to_sym(switches.last), value]
+        end
         opts
       end
       default_opt = @options.each_with_object([]) do |h, arr|
@@ -203,8 +207,9 @@ module Commander
           arr.push(h[:default].to_s)
         end
       end
-      opt.parse! default_opt
-      opt.parse! args
+      parser.parse! default_opt
+      remaining = parser.parse! args
+      [remaining, options]
     end
 
 
@@ -212,22 +217,13 @@ module Commander
     # Creates an Options instance populated with the option values
     # collected by the #option_proc.
 
-    def proxy_option_struct
-      proxy_options.each_with_object(Options.new) do |(option, value), options|
+    def build_options_struct(opts)
+      opts.each_with_object(Options.new) do |(option, value), options|
         # options that are present will evaluate to true
         value = true if value.nil?
         options.__send__ :"#{option}=", value
         options
       end
-    end
-
-    ##
-    # Option proxy proc used when a block is not explicitly passed
-    # via the #option method. This allows commander to auto-populate
-    # and work with option values.
-
-    def option_proc(switches)
-      ->(value) { proxy_options << [Runner.switch_to_sym(switches.last), value] }
     end
 
     def inspect

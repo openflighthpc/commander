@@ -253,17 +253,12 @@ module Commander
     end
 
     ##
-    # Returns a proc allowing for commands to inherit global options.
-    # This functionality works whether a block is present for the global
-    # option or not, so simple switches such as --verbose can be used
-    # without a block, and used throughout all commands.
+    # Allow global options to execute a block of code
+    #
 
     def global_option_proc(switches, &block)
       lambda do |value|
-        unless active_command.nil?
-          active_command.proxy_options << [Runner.switch_to_sym(switches.last), value]
-        end
-        if block && !value.nil?
+        if block
           instance_exec(value, &block)
         end
       end
