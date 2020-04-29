@@ -9,12 +9,12 @@ module Commander
       )
       instance.run
     rescue StandardError, Interrupt => e
-      $stderr.puts e.backtrace.reverse if args.include?('--trace')
       painted = e.exception("#{Paint[@program[:name], '#2794d8']}: #{Paint[e.to_s, :red, :bright]}")
       if disable_error_handler(false)
         raise painted
       else
-        Commander.error_handler { raise painted }
+        trace = Commander.trace?(args)
+        Commander.error_handler(trace) { raise painted }
       end
     end
 

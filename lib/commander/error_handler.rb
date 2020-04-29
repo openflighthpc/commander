@@ -17,9 +17,16 @@ module Commander
     end
   end
 
-  def self.error_handler
+  def self.trace?(args)
+    last = args.index('--') || args.length
+    args[0..last].include?('--trace')
+  end
+
+  def self.error_handler(trace = false)
     yield if block_given?
   rescue StandardError, Interrupt => e
+    $stderr.puts e.full_message if trace
+
     error_msg = e.message
     exit_code = e.respond_to?(:exit_code) ?  e.exit_code.to_i : 1
     case e
