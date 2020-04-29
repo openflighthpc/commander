@@ -8,7 +8,7 @@ module Commander
     class CommandUsageError < StandardError; end
 
     attr_accessor :name, :examples, :syntax, :description, :priority
-    attr_accessor :summary, :proxy_options, :options, :hidden
+    attr_accessor :summary, :proxy_options, :options
 
     ##
     # Options struct.

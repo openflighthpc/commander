@@ -169,7 +169,6 @@ module Commander
       @help_commands = @commands.dup
       if args.empty? || args[0] == :error
         @help_options = @options
-        @help_commands.reject! { |k, v| !!v.hidden }
         old_wrap = $terminal.wrap_at
         $terminal.wrap_at = nil
         program(:nobanner, true) if args[0] == :error
