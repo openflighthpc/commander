@@ -8,7 +8,7 @@ module Commander
     class CommandUsageError < StandardError; end
 
     attr_accessor :name, :examples, :syntax, :description, :priority
-    attr_accessor :summary, :proxy_options, :options
+    attr_accessor :summary, :proxy_options, :options, :config
 
     ##
     # Options struct.
@@ -196,7 +196,7 @@ module Commander
       end
 
       callee = @when_called.dup
-      callee.shift&.send(callee.shift || :call, args, proxy_option_struct)
+      callee.shift&.send(callee.shift || :call, args, proxy_option_struct, config.dup)
     end
 
     ##
