@@ -1,8 +1,6 @@
 require 'optparse'
 require 'commander/patches/implicit-short-tags'
 
-OptionParser.prepend Commander::Patches::ImplicitShortTags
-
 module Commander
   class Command
     class CommandUsageError < StandardError; end
@@ -65,6 +63,12 @@ module Commander
 
       # Fall back on name comparison if priority is equal
       comp == 0 ? self.name <=> other.name : comp
+    end
+
+    def run!(args, opts, config)
+      assert_correct_number_of_args!(args)
+      callee = @when_called.dup
+      callee.shift&.send(callee.shift || :call, args, opts, config)
     end
 
     ##
@@ -167,6 +171,14 @@ module Commander
 
     def skip_option_parsing(set = true)
       @skip_option_parsing ||= set
+    end
+
+    ##
+    # Flags the command not to appear in general help text
+    #
+
+    def hidden(set = true)
+      @hidden ||= set
     end
 
     def inspect

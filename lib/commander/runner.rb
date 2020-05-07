@@ -68,6 +68,10 @@ module Commander
         parser.parse default_args
         @args = parser.parse args_and_opts
       end
+
+      def parsed_all_opts?
+        args.all? { |v| !/\A-.*/.match?(v) }
+      end
     end
 
     ##
@@ -103,21 +107,18 @@ module Commander
       opts = Command::Options.build(parser.opts)
       config = program(:config).dup
 
-      # Runs the help
       if opts.version
+        # Return the version
         say version
         exit 0
       elsif opts.help && active_command?
+        # Return help for the active_command
         run_help_command([active_command!.name])
-      # Runs the Action
       elsif active_command?
-        # Verifies there are enough arguments
-        active_command!.assert_correct_number_of_args!(args)
-
-        # Runs the action
-        callee = active_command!.instance_variable_get(:@when_called).dup
-        callee.shift&.send(callee.shift || :call, args, opts, config)
+        # Run the active_command
+        active_command.run!(args, opts, config)
       else
+        # Return generic help
         run_help_command('')
       end
     rescue => e
@@ -178,9 +179,19 @@ module Commander
 
     ##
     # Get active command within arguments passed to this runner.
+    # It will try an run the default if arguments have been provided
+    # It can not run a default command that is flags-only
+    # This is to provide consistent behaviour to --help
+    #
 
     def active_command
-      @__active_command ||= command(command_name_from_args)
+      @__active_command ||= begin
+        if named_command = command(command_name_from_args)
+          named_command
+        elsif default_command? && flagless_args_string.length > 0
+          default_command
+        end
+      end
     end
 
     def active_command!
@@ -191,20 +202,33 @@ module Commander
       active_command ? true : false
     end
 
+    def default_command
+      @__default_command ||= command(@default_command)
+    end
+
+    def default_command?
+      default_command ? true : false
+    end
+
     ##
     # Attempts to locate a command name from within the arguments.
     # Supports multi-word commands, using the largest possible match.
 
     def command_name_from_args
-      @__command_name_from_args ||= (valid_command_names_from(*@args.dup).sort.last || @default_command)
+      @__command_name_from_args ||= valid_command_names_from(*@args.dup).sort.last
+    end
+
+    def flagless_args_string
+      @flagless_args_string ||= @args.reject { |value| value =~ /^-/ }.join ' '
     end
 
     ##
     # Returns array of valid command names found within _args_.
 
     def valid_command_names_from(*args)
-      arg_string = args.delete_if { |value| value =~ /^-/ }.join ' '
-      commands.keys.find_all { |name| name if arg_string =~ /^#{name}\b/ }
+      commands.keys.find_all do |name|
+        name if flagless_args_string =~ /^#{name}\b/
+      end
     end
 
     ##
@@ -239,7 +263,7 @@ module Commander
     # essentially the same as using the --help switch.
     def run_help_command(args)
       UI.enable_paging if program(:help_paging)
-      @help_commands = @commands.dup
+      @help_commands = @commands.reject { |_, v| v.hidden(false) }.to_h
       if args.empty? || args[0] == :error
         @help_options = @options
         old_wrap = $terminal.wrap_at

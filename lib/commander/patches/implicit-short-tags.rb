@@ -73,3 +73,5 @@ module Commander
     end
   end
 end
+
+OptionParser.prepend Commander::Patches::ImplicitShortTags
