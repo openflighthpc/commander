@@ -82,7 +82,7 @@ module Commander
         method = meta.nil? ? :bool : :string
 
         # Adds the option to Slop
-        slop.send(method, *other_switches, long_switch, default: default)
+        slop.send(method, *other_switches, long_switch, description, default: default)
       end
     end
 

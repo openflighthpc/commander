@@ -239,7 +239,7 @@ module Commander
       UI.enable_paging if program(:help_paging)
       @help_commands = @commands.reject { |_, v| v.hidden(false) }.to_h
       if args.empty? || args[0] == :error
-        @help_options = @options
+        @help_options = []
         old_wrap = $terminal.wrap_at
         $terminal.wrap_at = nil
         program(:nobanner, true) if args[0] == :error

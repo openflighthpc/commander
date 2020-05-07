@@ -28,12 +28,18 @@
     <%= "%-#{max_aliases_length}s %s %s" % [alias_name, command(alias_name).name, args.join(' ')] -%>
   <% end %>
 <% end %>
-<% unless @help_options.empty? -%>
+<% unless global_slop.options.empty? -%>
   <%= $terminal.color "GLOBAL OPTIONS", :bold %>:
-	<% for option in @help_options -%>
+	<% global_slop.options.each do |global| -%>
 
-    <%= option[:switches].join ', ' %> 
-        <%= option[:description] %>
+    <% tag = if [Slop::BoolOption, Slop::NullOption]
+               nil
+             else
+               option.key.upcase
+             end
+    -%>
+    <%= global.flags.join ', ' %> <%= tag %>
+        <%= global.desc %>
 	<% end -%>
 <% end -%>
 <% if program :help -%>
