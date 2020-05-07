@@ -71,7 +71,7 @@ module Commander
       remaining_args = global_parser.arguments
 
       # Parse the command slop options
-      if active_command?
+      if active_command? && !active_command.skip_option_parsing(false)
         local_parser = Slop::Parser.new(active_command.slop)
         local_opts = local_parser.parse(remaining_args)
         remaining_args = local_parser.arguments
@@ -201,7 +201,7 @@ module Commander
 
     def valid_command_names_from(*args)
       commands.keys.find_all do |name|
-        name if flagless_args_string =~ /^#{name}\b/
+        name if flagless_args_string =~ /^#{name}(?![[:graph:]])/
       end
     end
 
