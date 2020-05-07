@@ -54,36 +54,28 @@ module Commander
     ##
     # Add an option.
     #
-    # Option Parsing is currently being refactored. The help text is partially
-    # generated via OptionParser but the actual parsing is done via Slop.
+    # This is the legacy `option` method which now wraps `slop`
     #
-    # Eventually `Slop` completely replace OptionParser
 
     def option(*args, default: nil, &block)
+      # Split the description from the switchers
       switches, description = Runner.separate_switches_from_description(*args)
-      @options << {
-        args: args,
-        switches: switches,
-        description: description
-      }.tap do |opts|
-        opts[:default] = default unless default.nil?
 
-        # Other switches are normally short tags and something like below
-        # In this case the VALUE needs to be ignored
-        # -k VALUE
-        other_switches = opts[:switches].dup.tap(&:pop).map do |string|
-          string.split(' ').first
-        end
-
-        long_switch, meta = opts[:switches].last.split(' ', 2)
-
-        # The meta flag is the VALUE from denotes if its a boolean or
-        # string method
-        method = meta.nil? ? :bool : :string
-
-        # Adds the option to Slop
-        slop.send(method, *other_switches, long_switch, description, default: default)
+      # Other switches are normally short tags and something like below
+      # In this case the VALUE needs to be ignored
+      # -k VALUE
+      other_switches = switches.dup.tap(&:pop).map do |string|
+        string.split(' ').first
       end
+
+      long_switch, meta = switches.last.split(' ', 2)
+
+      # The meta flag is the VALUE from denotes if its a boolean or
+      # string method
+      method = meta.nil? ? :bool : :string
+
+      # Adds the option to Slop
+      slop.send(method, *other_switches, long_switch, description, default: default)
     end
 
     def slop
