@@ -1,3 +1,5 @@
+require 'slop'
+
 module Commander
   module CLI
     ##
@@ -11,7 +13,7 @@ module Commander
     def run(*args)
       instance = Runner.new(
         @program, commands, default_command,
-        global_options, aliases, args
+        global_slop, aliases, args
       )
       instance.run
     end
@@ -85,28 +87,11 @@ module Commander
     ##
     # Hash of Global Options
     #
-    def global_options
-      @global_options ||= begin
-        @global_options = [] # Allows Recursive - Refactor
-        global_option('-h', '--help', 'Display help documentation')
-        global_option('--version', 'Display version information')
+    def global_slop
+      @global_slop ||= Slop::Options.new.tap do |slop|
+        slop.bool '-h', '--help', 'Display help documentation'
+        slop.bool '--version', 'Display version information'
       end
-    end
-
-    ##
-    # Add a global option; follows the same syntax as Command#option
-    # This would be used for switches such as --version
-    # NOTE: --trace is special and does not appear in the help
-    # It is intended for debugging purposes
-
-    def global_option(*args, &block)
-      switches, description = Runner.separate_switches_from_description(*args)
-      global_options << {
-        args: args,
-        proc: block,
-        switches: switches,
-        description: description,
-      }
     end
 
     ##

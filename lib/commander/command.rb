@@ -1,5 +1,4 @@
-require 'optparse'
-require 'commander/patches/implicit-short-tags'
+require 'slop'
 
 module Commander
   class Command
@@ -7,9 +6,6 @@ module Commander
 
     attr_accessor :name, :examples, :syntax, :description, :priority
     attr_accessor :summary, :options
-
-    ##
-    # Options struct.
 
     class Options
       include Blank
@@ -91,48 +87,10 @@ module Commander
     ##
     # Add an option.
     #
-    # Options are parsed via OptionParser so view it
-    # for additional usage documentation. A block may optionally be
-    # passed to handle the option, otherwise the _options_ struct seen below
-    # contains the results of this option. This handles common formats such as:
+    # Option Parsing is currently being refactored. The help text is partially
+    # generated via OptionParser but the actual parsing is done via Slop.
     #
-    #   -h, --help          options.help           # => bool
-    #   --[no-]feature      options.feature        # => bool
-    #   --large-switch      options.large_switch   # => bool
-    #   --file FILE         options.file           # => file passed
-    #   --list WORDS        options.list           # => array
-    #   --date [DATE]       options.date           # => date or nil when optional argument not set
-    #
-    # === Examples
-    #
-    #   command :something do |c|
-    #     c.option '--recursive', 'Do something recursively'
-    #     c.option '--file FILE', 'Specify a file'
-    #     c.option '--[no-]feature', 'With or without feature'
-    #     c.option '--list FILES', Array, 'List the files specified'
-    #
-    #     c.when_called do |args, options|
-    #       do_something_recursively if options.recursive
-    #       do_something_with_file options.file if options.file
-    #     end
-    #   end
-    #
-    # === Help Formatters
-    #
-    # This method also parses the arguments passed in order to determine
-    # which were switches, and which were descriptions for the
-    # option which can later be used within help formatters
-    # using option[:switches] and option[:description].
-    #
-    # === Input Parsing
-    #
-    # Since Commander utilizes OptionParser you can pre-parse and evaluate
-    # option arguments. Simply require 'optparse/time', or 'optparse/date', as these
-    # objects must respond to #parse.
-    #
-    #   c.option '--time TIME', Time
-    #   c.option '--date [DATE]', Date
-    #
+    # Eventually `Slop` completely replace OptionParser
 
     def option(*args, default: nil, &block)
       switches, description = Runner.separate_switches_from_description(*args)
@@ -140,7 +98,29 @@ module Commander
         args: args,
         switches: switches,
         description: description
-      }.tap { |o| o[:default] = default unless default.nil? }
+      }.tap do |opts|
+        opts[:default] = default unless default.nil?
+
+        # Other switches are normally short tags and something like below
+        # In this case the VALUE needs to be ignored
+        # -k VALUE
+        other_switches = opts[:switches].dup.tap(&:pop).map do |string|
+          string.split(' ').first
+        end
+
+        long_switch, meta = opts[:switches].last.split(' ', 2)
+
+        # The meta flag is the VALUE from denotes if its a boolean or
+        # string method
+        method = meta.nil? ? :bool : :string
+
+        # Adds the option to Slop
+        slop.send(method, *other_switches, long_switch, default: default)
+      end
+    end
+
+    def slop
+      @slop ||= Slop::Options.new
     end
 
     ##

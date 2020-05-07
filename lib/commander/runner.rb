@@ -1,4 +1,5 @@
 require 'paint'
+require 'ostruct'
 
 module Commander
   class Runner
@@ -14,9 +15,8 @@ module Commander
     attr_reader :commands
 
     ##
-    # Global options.
-
-    attr_reader :options
+    # The global Slop Options
+    attr_reader :global_slop
 
     ##
     # Hash of help formatter aliases.
@@ -33,7 +33,7 @@ module Commander
 
     def initialize(*inputs)
       @program, @commands, @default_command, \
-        @options, @aliases, @args = inputs.map(&:dup)
+        @global_slop, @aliases, @args = inputs.map(&:dup)
 
       @commands['help'] ||= Command.new('help').tap do |c|
         c.syntax = "#{program(:name)} help [command]"
@@ -45,33 +45,6 @@ module Commander
         end
       end
       @help_formatter_aliases = help_formatter_alias_defaults
-    end
-
-    Parser = Struct.new(:args_and_opts, :flags) do
-      attr_reader :args, :opts
-
-      def parse
-        @opts = []
-        parser = flags.each_with_object(OptionParser.new) do |flag, p|
-          block = flag[:proc]
-          block ||= lambda do |value|
-            @opts << [Runner.switch_to_sym(flag[:switches].last), value]
-          end
-          p.on(*flag[:args], &block)
-        end
-        default_args = flags.each_with_object([]) do |flag, memo|
-          if flag.key?(:default)
-            memo.push flag[:switches].first.split.first
-            memo.push flag[:default]
-          end
-        end
-        parser.parse default_args
-        @args = parser.parse args_and_opts
-      end
-
-      def parsed_all_opts?
-        args.all? { |v| !/\A-.*/.match?(v) }
-      end
     end
 
     ##
@@ -86,26 +59,27 @@ module Commander
       require_program :version, :description
 
       # Determine where the arguments/ options start
-      args_opts = if alias? command_name_from_args
+      remaining_args = if alias? command_name_from_args
         @aliases[command_name_from_args.to_s] + args_without_command_name
       else
         args_without_command_name
       end
 
-      # Always parse the global options:
-      # AKA --version --help etc.
-      flags = if active_command? && !active_command.skip_option_parsing(false)
-                [*options, *active_command!.options]
-              else
-                options
-              end
+      # Parses the global slop options
+      global_parser = Slop::Parser.new(global_slop, suppress_errors: true)
+      global_opts = global_parser.parse(remaining_args)
+      remaining_args = global_parser.arguments
+
+      # Parse the command slop options
+      if active_command?
+        local_parser = Slop::Parser.new(active_command.slop)
+        local_opts = local_parser.parse(remaining_args)
+        remaining_args = local_parser.arguments
+      end
 
       # Parses the arguments for options
-      parser = Parser.new(args_opts, flags)
-      parser.parse
-      args = parser.args
-      opts = Command::Options.build(parser.opts)
       config = program(:config).dup
+      opts = OpenStruct.new global_opts.to_h.merge(local_opts.to_h)
 
       if opts.version
         # Return the version
@@ -116,7 +90,7 @@ module Commander
         run_help_command([active_command!.name])
       elsif active_command?
         # Run the active_command
-        active_command.run!(args, opts, config)
+        active_command.run!(remaining_args, opts, config)
       else
         # Return generic help
         run_help_command('')
