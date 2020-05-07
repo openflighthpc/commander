@@ -12,8 +12,6 @@ project that support the OpenFlightHPC tools.
 To ship a new release, do the following:
 
  * Increment the version number in `version.rb`
- * Run `rake build`
- * Run `rake release`
 
 Documentation from the upstream project follows.
 
@@ -23,14 +21,11 @@ Documentation from the upstream project follows.
 
 The complete solution for Ruby command-line executables.
 Commander bridges the gap between other terminal related libraries
-you know and love (OptionParser, HighLine), while providing many new
+you know and love (Slop, HighLine), while providing many new
 features, and an elegant API.
 
 ## Features
 
-* Easier than baking cookies
-* Parses options using OptionParser
-* Auto-populates struct with options ( no more `{ |v| options[:recursive] = v }` )
 * Auto-generates help documentation via pluggable help formatters
 * Optional default command when none is present
 * Global / Command level options
@@ -38,26 +33,13 @@ features, and an elegant API.
 * Imports the highline gem for interacting with the terminal
 * Adds additional user interaction functionality
 * Highly customizable progress bar with intuitive, simple usage
-* Multi-word command name support such as `drupal module install MOD`, rather than `drupal module_install MOD`
 * Sexy paging for long bodies of text
-* Support for MacOS text-to-speech
 * Command aliasing (very powerful, as both switches and arguments can be used)
-* Growl notification support for MacOS
 * Use the `commander` executable to initialize a commander driven program
 
 ## Installation
 
     $ gem install commander
-
-## Quick Start
-
-To generate a quick template for a commander app, run:
-
-    $ commander init yourfile.rb
-
-To generate a quick modular style template for a commander app, run:
-
-    $ commander init --modular yourfile.rb
 
 ## Example
 
@@ -87,8 +69,8 @@ end
 command :bar do |c|
   c.syntax = 'foobar bar [options]'
   c.description = 'Display bar with optional prefix and suffix'
-  c.option '--prefix STRING', String, 'Adds a prefix to bar'
-  c.option '--suffix STRING', String, 'Adds a suffix to bar'
+  c.option '--prefix STRING', 'Adds a prefix to bar'
+  c.option '--suffix STRING', 'Adds a suffix to bar'
   c.action do |args, options|
     options.default :prefix => '(', :suffix => ')'
     say "#{options.prefix}bar#{options.suffix}"
@@ -142,8 +124,8 @@ to set defaults in a clean manner for options which have not been set.
 
 ```ruby
 command :foo do |c|
-  c.option '--interval SECONDS', Integer, 'Interval in seconds'
-  c.option '--timeout SECONDS', Integer, 'Timeout in seconds'
+  c.option '--interval SECONDS', 'Interval in seconds'
+  c.option '--timeout SECONDS', 'Timeout in seconds'
   c.action do |args, options|
     options.default \
       :interval => 2,
@@ -239,55 +221,11 @@ Which will output the rest of the help doc, along with:
 
 ### Global Options
 
-Although most switches will be at the command level, several are available by
-default at the global level, such as `--version`, and `--help`. Using
-`#global_option` you can add additional global options:
-
-```ruby
-global_option('-c', '--config FILE', 'Load config data for your commands to use') { |file| ... }
-```
-
-This method accepts the same syntax as `Commander::Command#option` so check it out for documentation.
-
-All global options regardless of providing a block are accessable at the command level. This
-means that instead of the following:
-
-```ruby
-global_option('--verbose') { $verbose = true }
-...
-c.action do |args, options|
-  say 'foo' if $verbose
-...
-```
-
-You may:
-
-```ruby
-global_option '--verbose'
-...
-c.action do |args, options|
-  say 'foo' if options.verbose
-...
-```
+WIP: Update globals behaviour
 
 ### Tracing
 
 WIP: Update OpenFlight --trace behaviour
-
-## Tips
-
-When adding a global or command option, `OptionParser` no longer implicitly adds a small
-switch unless explicitly stated.
-
-## ASCII Tables
-
-For feature rich ASCII tables for your terminal app check out the terminal-table gem at http://github.com/tj/terminal-table
-
-    +----------+-------+----+--------+-----------------------+
-    | Terminal | Table | Is | Wicked | Awesome               |
-    +----------+-------+----+--------+-----------------------+
-    |          |       |    |        | get it while its hot! |
-    +----------+-------+----+--------+-----------------------+
 
 ## Running Specifications
 
