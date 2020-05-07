@@ -7,39 +7,6 @@ module Commander
     attr_accessor :name, :examples, :syntax, :description, :priority
     attr_accessor :summary, :options
 
-    class Options
-      include Blank
-
-      def self.build(opts)
-        opts.each_with_object(new) do |(option, value), options|
-          # options that are present will evaluate to true
-          value = true if value.nil?
-          options.__send__ :"#{option}=", value
-          options
-        end
-      end
-
-      def initialize
-        @table = {}
-      end
-
-      def __hash__
-        @table
-      end
-
-      def method_missing(meth, *args)
-        meth.to_s =~ /=$/ ? @table[meth.to_s.chop.to_sym] = args.first : @table[meth]
-      end
-
-      def default(defaults = {})
-        @table = defaults.merge! @table
-      end
-
-      def inspect
-        "<Commander::Command::Options #{ __hash__.map { |k, v| "#{k}=#{v.inspect}" }.join(', ') }>"
-      end
-    end
-
     ##
     # Initialize new command with specified _name_.
 

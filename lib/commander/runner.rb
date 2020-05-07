@@ -77,7 +77,7 @@ module Commander
         remaining_args = local_parser.arguments
       end
 
-      # Parses the arguments for options
+      # Format the config and opts
       config = program(:config).dup
       opts = OpenStruct.new global_opts.to_h.merge(local_opts.to_h)
 
