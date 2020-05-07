@@ -228,7 +228,6 @@ module Commander
 
     def help_formatter_alias_defaults
       {
-        compact: HelpFormatter::TerminalCompact,
       }
     end
 

@@ -34,7 +34,7 @@ features, and an elegant API.
 * Auto-generates help documentation via pluggable help formatters
 * Optional default command when none is present
 * Global / Command level options
-* Packaged with two help formatters (Terminal, TerminalCompact)
+* Packaged with one help formatters (Terminal)
 * Imports the highline gem for interacting with the terminal
 * Adds additional user interaction functionality
 * Highly customizable progress bar with intuitive, simple usage
@@ -269,24 +269,6 @@ c.action do |args, options|
   say 'foo' if options.verbose
 ...
 ```
-
-### Formatters
-
-Two core formatters are currently available, the default `Terminal` formatter
-as well as `TerminalCompact`. To utilize a different formatter simply use
-`:help_formatter` like below:
-
-```ruby
-program :help_formatter, Commander::HelpFormatter::TerminalCompact
-```
-
-Or utilize the help formatter aliases:
-
-```ruby
-program :help_formatter, :compact
-```
-
-This abstraction could be utilized to generate HTML documentation for your executable.
 
 ### Tracing
 

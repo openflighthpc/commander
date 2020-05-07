@@ -29,8 +29,6 @@ module Commander
     #   program :description, 'Commander utility program.'
     #   program :help, 'Copyright', '2008 TJ Holowaychuk'
     #   program :help, 'Anything', 'You want'
-    #   program :help_formatter, :compact
-    #   program :help_formatter, Commander::HelpFormatter::TerminalCompact
     #
     #   # Get data
     #   program :name # => 'Commander'
