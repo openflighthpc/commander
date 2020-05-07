@@ -19,6 +19,7 @@ Gem::Specification.new do |s|
   s.require_paths = ['lib']
 
   s.add_runtime_dependency('highline', '> 1.7.2')
+  s.add_runtime_dependency('slop', '~> 4.8')
   s.add_runtime_dependency('paint', '~> 2.1.0')
 
   s.add_development_dependency('rspec', '~> 3.2')

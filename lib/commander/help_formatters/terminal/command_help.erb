@@ -22,14 +22,20 @@
     <%= command %>
 	<% end -%>
 <% end -%>
-<% unless @options.empty? -%>
+<% unless slop.options.empty? -%>
 
   <%= $terminal.color "OPTIONS", :bold %>:
-	<% for option in @options -%>
+	<% slop.options.each do |option| -%>
 
-    <%= option[:switches].join ', ' %> 
-        <%= Commander::HelpFormatter.indent 8, option[:description] %><% if option[:default] %>
-        <%= $terminal.color "Default", :bold %>: <%= option[:default] %><% end %>
+  <% tag = if [Slop::BoolOption, Slop::NullOption].include?(option.class)
+             nil
+           else
+             option.key.upcase
+           end
+  -%>
+  <%= option.flags.join ', ' %> <%= tag %>
+        <%= Commander::HelpFormatter.indent 8, option.desc %><% if option.default_value %>
+        <%= $terminal.color "Default", :bold %>: <%= option.default_value %><% end %>
   <% end -%>
 <% end -%>
 

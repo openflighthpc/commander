@@ -1,4 +1,5 @@
 require 'paint'
+require 'ostruct'
 
 module Commander
   class Runner
@@ -14,9 +15,8 @@ module Commander
     attr_reader :commands
 
     ##
-    # Global options.
-
-    attr_reader :options
+    # The global Slop Options
+    attr_reader :global_slop
 
     ##
     # Hash of help formatter aliases.
@@ -33,8 +33,8 @@ module Commander
 
     def initialize(*inputs)
       @program, @commands, @default_command, \
-        @options, @aliases, @args = inputs.map(&:dup)
-      @args.reject! { |a| a == '--trace' }
+        @global_slop, @aliases, @args = inputs.map(&:dup)
+
       @commands['help'] ||= Command.new('help').tap do |c|
         c.syntax = "#{program(:name)} help [command]"
         c.description = 'Display global or [command] help documentation'
@@ -49,15 +49,64 @@ module Commander
 
     ##
     # Run command parsing and execution process
-    # NOTE: This method does not have error handling, see: run!
+    INBUILT_ERRORS = [
+      OptionParser::InvalidOption,
+      Command::CommandUsageError,
+      InvalidCommandError
+    ]
 
     def run
       require_program :version, :description
 
-      parse_global_options
-      remove_global_options options, @args
+      # Determine where the arguments/ options start
+      remaining_args = if alias? command_name_from_args
+        @aliases[command_name_from_args.to_s] + args_without_command_name
+      else
+        args_without_command_name
+      end
 
-      run_active_command
+      # Parses the global slop options
+      global_parser = Slop::Parser.new(global_slop, suppress_errors: true)
+      global_opts = global_parser.parse(remaining_args)
+      remaining_args = global_parser.arguments
+
+      # Parse the command slop options
+      if active_command?
+        local_parser = Slop::Parser.new(active_command.slop)
+        local_opts = local_parser.parse(remaining_args)
+        remaining_args = local_parser.arguments
+      end
+
+      # Format the config and opts
+      config = program(:config).dup
+      opts = OpenStruct.new global_opts.to_h.merge(local_opts.to_h)
+
+      if opts.version
+        # Return the version
+        say version
+        exit 0
+      elsif opts.help && active_command?
+        # Return help for the active_command
+        run_help_command([active_command!.name])
+      elsif active_command?
+        # Run the active_command
+        active_command.run!(remaining_args, opts, config)
+      else
+        # Return generic help
+        run_help_command('')
+      end
+    rescue => e
+      msg = "#{Paint[program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
+      new_error = e.exception(msg)
+
+      if INBUILT_ERRORS.include?(new_error.class)
+        new_error = InternalCallableError.new(e.message) do
+          $stderr.puts "\nUsage:\n\n"
+          name = active_command? ? active_command.name : :error
+          run_help_command([name])
+        end
+      end
+      raise new_error
     end
 
     ##
@@ -100,20 +149,39 @@ module Commander
       @aliases.include? name.to_s
     end
 
-    ##
-    # Check if a command _name_ exists.
-
-    def command_exists?(name)
-      @commands[name.to_s]
-    end
-
     #:stopdoc:
 
     ##
     # Get active command within arguments passed to this runner.
+    # It will try an run the default if arguments have been provided
+    # It can not run a default command that is flags-only
+    # This is to provide consistent behaviour to --help
+    #
 
     def active_command
-      @__active_command ||= command(command_name_from_args)
+      @__active_command ||= begin
+        if named_command = command(command_name_from_args)
+          named_command
+        elsif default_command? && flagless_args_string.length > 0
+          default_command
+        end
+      end
+    end
+
+    def active_command!
+      active_command.tap { |c| require_valid_command(c) }
+    end
+
+    def active_command?
+      active_command ? true : false
+    end
+
+    def default_command
+      @__default_command ||= command(@default_command)
+    end
+
+    def default_command?
+      default_command ? true : false
     end
 
     ##
@@ -121,15 +189,20 @@ module Commander
     # Supports multi-word commands, using the largest possible match.
 
     def command_name_from_args
-      @__command_name_from_args ||= (valid_command_names_from(*@args.dup).sort.last || @default_command)
+      @__command_name_from_args ||= valid_command_names_from(*@args.dup).sort.last
+    end
+
+    def flagless_args_string
+      @flagless_args_string ||= @args.reject { |value| value =~ /^-/ }.join ' '
     end
 
     ##
     # Returns array of valid command names found within _args_.
 
     def valid_command_names_from(*args)
-      arg_string = args.delete_if { |value| value =~ /^-/ }.join ' '
-      commands.keys.find_all { |name| name if arg_string =~ /^#{name}\b/ }
+      commands.keys.find_all do |name|
+        name if flagless_args_string =~ /^#{name}\b/
+      end
     end
 
     ##
@@ -145,7 +218,7 @@ module Commander
     def args_without_command_name
       removed = []
       parts = command_name_from_args.split rescue []
-      @args.dup.delete_if do |arg|
+      @args.reject do |arg|
         removed << arg if parts.include?(arg) && !removed.include?(arg)
       end
     end
@@ -155,26 +228,7 @@ module Commander
 
     def help_formatter_alias_defaults
       {
-        compact: HelpFormatter::TerminalCompact,
       }
-    end
-
-    ##
-    # Limit commands to those which are subcommands of the one that is active
-    def limit_commands_to_subcommands(command)
-      commands.select! do |other_sym, _|
-        other = other_sym.to_s
-        # Do not match sub-sub commands (matches for a second space)
-        if /\A#{command.name}\s.*\s/.match?(other)
-          false
-        # Do match regular sub commands
-        elsif /\A#{command.name}\s/.match?(other)
-          true
-        # Do not match any other commands
-        else
-          false
-        end
-      end
     end
 
     ##
@@ -182,10 +236,9 @@ module Commander
     # essentially the same as using the --help switch.
     def run_help_command(args)
       UI.enable_paging if program(:help_paging)
-      @help_commands = @commands.dup
+      @help_commands = @commands.reject { |_, v| v.hidden(false) }.to_h
       if args.empty? || args[0] == :error
-        @help_options = @options
-        @help_commands.reject! { |k, v| !!v.hidden }
+        @help_options = []
         old_wrap = $terminal.wrap_at
         $terminal.wrap_at = nil
         program(:nobanner, true) if args[0] == :error
@@ -194,52 +247,15 @@ module Commander
       else
         command = command args.join(' ')
         require_valid_command command
-        if command.sub_command_group?
-          limit_commands_to_subcommands(command)
-          say help_formatter.render_subcommand(command)
-        else
-          say help_formatter.render_command(command)
-        end
+        say help_formatter.render_command(command)
       end
     end
 
     ##
     # Raises InvalidCommandError when a _command_ is not found.
 
-    def require_valid_command(command = active_command)
+    def require_valid_command(command)
       fail InvalidCommandError, 'invalid command', caller if command.nil?
-    end
-
-    ##
-    # Removes global _options_ from _args_. This prevents an invalid
-    # option error from occurring when options are parsed
-    # again for the command.
-
-    def remove_global_options(options, args)
-      # TODO: refactor with flipflop, please TJ ! have time to refactor me !
-      options.each do |option|
-        switches = option[:switches].dup
-        next if switches.empty?
-
-        if (switch_has_arg = switches.any? { |s| s =~ /[ =]/ })
-          switches.map! { |s| s[0, s.index('=') || s.index(' ') || s.length] }
-        end
-
-        switches = expand_optionally_negative_switches(switches)
-
-        past_switch, arg_removed = false, false
-        args.delete_if do |arg|
-          if switches.any? { |s| s == arg }
-            arg_removed = !switch_has_arg
-            past_switch = true
-          elsif past_switch && !arg_removed && arg !~ /^-/
-            arg_removed = true
-          else
-            arg_removed = true
-            false
-          end
-        end
-      end
     end
 
     # expand switches of the style '--[no-]blah' into both their
@@ -252,41 +268,6 @@ module Commander
           memo << val.gsub(/\[no-\]/, 'no-')
         else
           memo << val
-        end
-      end
-    end
-
-    ##
-    # Parse global command options.
-
-    def parse_global_options
-      parser = options.inject(OptionParser.new) do |options, option|
-        options.on(*option[:args], &global_option_proc(option[:switches], &option[:proc]))
-      end
-
-      options = @args.dup
-      begin
-        parser.parse!(options)
-      rescue OptionParser::InvalidOption => e
-        # Remove the offending args and retry.
-        options = options.reject { |o| e.args.include?(o) }
-        retry
-      end
-    end
-
-    ##
-    # Returns a proc allowing for commands to inherit global options.
-    # This functionality works whether a block is present for the global
-    # option or not, so simple switches such as --verbose can be used
-    # without a block, and used throughout all commands.
-
-    def global_option_proc(switches, &block)
-      lambda do |value|
-        unless active_command.nil?
-          active_command.proxy_options << [Runner.switch_to_sym(switches.last), value]
-        end
-        if block && !value.nil?
-          instance_exec(value, &block)
         end
       end
     end
@@ -323,18 +304,6 @@ module Commander
 
     def self.switch_to_sym(switch)
       switch.scan(/[\-\]](\w+)/).join('_').to_sym rescue nil
-    end
-
-    ##
-    # Run the active command.
-
-    def run_active_command
-      require_valid_command
-      if alias? command_name_from_args
-        active_command.run(*(@aliases[command_name_from_args.to_s] + args_without_command_name))
-      else
-        active_command.run(*args_without_command_name)
-      end
     end
 
     def say(*args) #:nodoc:

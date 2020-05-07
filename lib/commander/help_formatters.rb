@@ -2,16 +2,12 @@ module Commander
   module HelpFormatter
     autoload :Base, 'commander/help_formatters/base'
     autoload :Terminal, 'commander/help_formatters/terminal'
-    autoload :TerminalCompact, 'commander/help_formatters/terminal_compact'
 
     class Context
       def initialize(target)
         @target = target
       end
 
-      # NOTE: `get_binding` has been stubbed! This version will be ignored
-      # See patch for actual version
-      prepend Patches::HelpFormatterBinding
       def get_binding
         @target.instance_eval { binding }.tap do |bind|
           decorate_binding(bind)
