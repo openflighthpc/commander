@@ -90,10 +90,10 @@ module Commander
 
       # Always parse the global options:
       # AKA --version --help etc.
-      flags = if active_command.skip_option_parsing(false)
-                options
+      flags = if active_command? && !active_command.skip_option_parsing(false)
+                [*options, *active_command!.options]
               else
-                [*options, *active_command.options]
+                options
               end
 
       # Parses the arguments for options
@@ -107,16 +107,18 @@ module Commander
       if opts.version
         say version
         exit 0
-      elsif opts.help
-        run_help_command([active_command.name])
+      elsif opts.help && active_command?
+        run_help_command([active_command!.name])
       # Runs the Action
-      else
+      elsif active_command?
         # Verifies there are enough arguments
-        active_command.assert_correct_number_of_args!(args)
+        active_command!.assert_correct_number_of_args!(args)
 
         # Runs the action
-        callee = active_command.instance_variable_get(:@when_called).dup
+        callee = active_command!.instance_variable_get(:@when_called).dup
         callee.shift&.send(callee.shift || :call, args, opts, config)
+      else
+        run_help_command('')
       end
     rescue => e
       msg = "#{Paint[program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
@@ -125,7 +127,7 @@ module Commander
       if INBUILT_ERRORS.include?(new_error.class)
         new_error = InternalCallableError.new(e.message) do
           $stderr.puts "\nUsage:\n\n"
-          name = command(command_name_from_args)&.name || :error
+          name = active_command? ? active_command.name : :error
           run_help_command([name])
         end
       end
@@ -172,22 +174,21 @@ module Commander
       @aliases.include? name.to_s
     end
 
-    ##
-    # Check if a command _name_ exists.
-
-    def command_exists?(name)
-      @commands[name.to_s]
-    end
-
     #:stopdoc:
 
     ##
     # Get active command within arguments passed to this runner.
 
     def active_command
-      @__active_command ||= command(command_name_from_args || 'help').tap do |cmd|
-        require_valid_command(cmd)
-      end
+      @__active_command ||= command(command_name_from_args)
+    end
+
+    def active_command!
+      active_command.tap { |c| require_valid_command(c) }
+    end
+
+    def active_command?
+      active_command ? true : false
     end
 
     ##
