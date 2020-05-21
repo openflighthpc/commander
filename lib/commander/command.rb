@@ -104,15 +104,6 @@ module Commander
     alias action when_called
 
     ##
-    # Causes the option parsing to be skipped. The flags will be passed
-    # down within the args instead
-    #
-
-    def skip_option_parsing(set = true)
-      @skip_option_parsing ||= set
-    end
-
-    ##
     # Flags the command not to appear in general help text
     #
 
