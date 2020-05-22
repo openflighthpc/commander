@@ -41,7 +41,7 @@
          end
 -%>
     <%= global.flags.join ', ' %> <%= tag %>
-        <%= global.desc %>
+        <%= Commander::HelpFormatter.indent 8, global.desc %>
 	<% end -%>
 <% end -%>
 <% if program :help -%>
