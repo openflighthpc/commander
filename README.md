@@ -43,39 +43,37 @@ features, and an elegant API.
 
 ## Example
 
-For more option examples view the `Commander::Command#option` method. Also
-an important feature to note is that action may be a class to instantiate,
-as well as an object, specifying a method to call, so view the RDoc for more information.
-
-### Classic style
-
 ```ruby
 require 'rubygems'
-require 'commander/import'
+require 'commander'
 
+class MyApplication
 # :name is optional, otherwise uses the basename of this executable
-program :name, 'Foo Bar'
-program :version, '1.0.0'
-program :description, 'Stupid command that prints foo or bar.'
+  program :name, 'Foo Bar'
+  program :version, '1.0.0'
+  program :description, 'Stupid command that prints foo or bar.'
 
-command :foo do |c|
-  c.syntax = 'foobar foo'
-  c.description = 'Displays foo'
-  c.action do |args, options|
-    say 'foo'
+  command :foo do |c|
+    c.syntax = 'foobar foo'
+    c.description = 'Displays foo'
+    c.action do |args, options|
+      say 'foo'
+    end
+  end
+
+  command :bar do |c|
+    c.syntax = 'foobar bar [options]'
+    c.description = 'Display bar with optional prefix and suffix'
+    c.slop.string '--prefix', 'Adds a prefix to bar'
+    c.slop.string '--suffix', 'Adds a suffix to bar', meta: 'CUSTOM_META'
+    c.action do |args, options, config|
+      options.default :prefix => '(', :suffix => ')'
+      say "#{options.prefix}bar#{options.suffix}"
+    end
   end
 end
 
-command :bar do |c|
-  c.syntax = 'foobar bar [options]'
-  c.description = 'Display bar with optional prefix and suffix'
-  c.option '--prefix STRING', 'Adds a prefix to bar'
-  c.option '--suffix STRING', 'Adds a suffix to bar'
-  c.action do |args, options|
-    options.default :prefix => '(', :suffix => ')'
-    say "#{options.prefix}bar#{options.suffix}"
-  end
-end
+MyApplication.run!(ARGV) if $0 == __FILE__
 ```
 
 Example output:
@@ -88,49 +86,27 @@ $ foobar bar --suffix '}' --prefix '{'
 # => {bar}
 ```
 
-### Modular style
-
-**NOTE:** Make sure to use `require 'commander'` rather than `require 'commander/import'`, otherwise Commander methods will still be imported into the global namespace.
-
-```ruby
-require 'rubygems'
-require 'commander'
-
-class MyApplication
-  extend Commander::CLI
-
-  program :name, 'Foo Bar'
-  program :version, '1.0.0'
-  program :description, 'Stupid command that prints foo or bar.'
-
-  command :foo do |c|
-    c.syntax = 'foobar foo'
-    c.description = 'Displays foo'
-    c.action do |args, options|
-      say 'foo'
-    end
-  end
-end
-
-MyApplication.run!(ARGV) if $0 == __FILE__
-```
-
 ## Commander Goodies
 
-### Option Defaults
+### Option Parsing
 
-The options struct passed to `#action` provides a `#default` method, allowing you
-to set defaults in a clean manner for options which have not been set.
+Option parsing is done using [Simple Lightweight Option Parsing](https://github.com/leejarvis/slop) which provides a rich interface for different option types. The main three being:
 
-```ruby
-command :foo do |c|
-  c.option '--interval SECONDS', 'Interval in seconds'
-  c.option '--timeout SECONDS', 'Timeout in seconds'
-  c.action do |args, options|
-    options.default \
-      :interval => 2,
-      :timeout  => 60
-  end
+```
+command do |c|
+  # Boolean Flag
+  c.slop.bool '--boolean-flag', 'Sets the :boolean_flag option to true'
+
+  # String Value
+  c.slop.string '--string-value', 'Takes a string from the command line'
+  c.slop.string '--flag', 'Sets the meta variable to META', meta: 'META'
+
+  # Interger Value
+  c.slop.integer '--integer-value', 'Takes the input and type casts it to an integer'
+
+  # Legacy syntax (boolean and string values only)
+  c.option '--legacy-bool', 'A boolean flag using the legacy syntax'
+  c.option '--legacy-string LEGACY_STRING', 'A string flag using the legacy syntax'
 end
 ```
 
@@ -221,7 +197,18 @@ Which will output the rest of the help doc, along with:
 
 ### Global Options
 
-WIP: Update globals behaviour
+Global options work in a similar way to command level options. They both are configured using `Slop`. Global options are available on all commands. They are configure on the `global_slop` directive.
+
+```
+class MyApplication
+  program :name, 'Foo Bar'
+
+  ...
+
+  global_slop.string '--custom-global', 'Available on all commands'
+end
+
+```
 
 ### Tracing
 
