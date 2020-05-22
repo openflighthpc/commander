@@ -65,21 +65,17 @@ module Commander
         args_without_command_name
       end
 
-      # Parses the global slop options
-      global_parser = Slop::Parser.new(global_slop, suppress_errors: true)
-      global_opts = global_parser.parse(remaining_args)
-      remaining_args = global_parser.arguments
+      # Combines the global and command options into a single parser
+      global_opts = global_slop.options
+      command_opts = active_command? ? active_command.slop.options : []
+      opts = [*global_opts, *command_opts]
+      parser = Slop::Parser.new(opts)
 
-      # Parse the command slop options
-      if active_command? && !active_command.skip_option_parsing(false)
-        local_parser = Slop::Parser.new(active_command.slop)
-        local_opts = local_parser.parse(remaining_args)
-        remaining_args = local_parser.arguments
-      end
-
-      # Format the config and opts
+      # Parsers the arguments/opts and fetches the config
+      parser.parse(remaining_args)
+      opts = OpenStruct.new parser.parse(remaining_args).to_h
+      remaining_args = parser.arguments
       config = program(:config).dup
-      opts = OpenStruct.new global_opts.to_h.merge(local_opts.to_h)
 
       if opts.version
         # Return the version

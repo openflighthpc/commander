@@ -1,7 +1,7 @@
 module Commander
   ##
   # Internal error class to delay rendering help text
-  # This is required as the help command pints directly to stdout
+  # This is required as the help command points directly to stdout
   # In general this has a bit of a code smell to it, and should
   # not be used publicly
   class InternalCallableError < StandardError

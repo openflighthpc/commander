@@ -32,14 +32,16 @@
   <%= $terminal.color "GLOBAL OPTIONS", :bold %>:
 	<% global_slop.options.each do |global| -%>
 
-    <% tag = if [Slop::BoolOption, Slop::NullOption]
-               nil
-             else
-               option.key.upcase
-             end
-    -%>
+<% tag = if [Slop::BoolOption, Slop::NullOption]
+           nil
+         elsif meta = option.config[:meta]
+           meta
+         else
+           option.key.upcase
+         end
+-%>
     <%= global.flags.join ', ' %> <%= tag %>
-        <%= global.desc %>
+        <%= Commander::HelpFormatter.indent 8, global.desc %>
 	<% end -%>
 <% end -%>
 <% if program :help -%>
