@@ -27,13 +27,15 @@
   <%= $terminal.color "OPTIONS", :bold %>:
 	<% slop.options.each do |option| -%>
 
-  <% tag = if [Slop::BoolOption, Slop::NullOption].include?(option.class)
-             nil
-           else
-             option.key.upcase
-           end
-  -%>
-  <%= option.flags.join ', ' %> <%= tag %>
+<% tag = if [Slop::BoolOption, Slop::NullOption].include?(option.class)
+           nil
+         elsif meta = option.config[:meta]
+           meta
+         else
+           option.key.upcase
+         end
+-%>
+    <%= option.flags.join ', ' %> <%= tag %>
         <%= Commander::HelpFormatter.indent 8, option.desc %><% if option.default_value %>
         <%= $terminal.color "Default", :bold %>: <%= option.default_value %><% end %>
   <% end -%>
