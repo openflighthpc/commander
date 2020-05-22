@@ -32,12 +32,12 @@
   <%= $terminal.color "GLOBAL OPTIONS", :bold %>:
 	<% global_slop.options.each do |global| -%>
 
-    <% tag = if [Slop::BoolOption, Slop::NullOption]
-               nil
-             else
-               option.key.upcase
-             end
-    -%>
+<% tag = if [Slop::BoolOption, Slop::NullOption]
+           nil
+         else
+           option.key.upcase
+         end
+-%>
     <%= global.flags.join ', ' %> <%= tag %>
         <%= global.desc %>
 	<% end -%>
