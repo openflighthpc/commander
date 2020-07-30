@@ -1,4 +1,3 @@
-require 'paint'
 require 'ostruct'
 
 module Commander
@@ -91,18 +90,16 @@ module Commander
         # Return generic help
         run_help_command('')
       end
-    rescue => e
-      msg = "#{Paint[program(:name), '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
-      new_error = e.exception(msg)
-
-      if INBUILT_ERRORS.include?(new_error.class)
-        new_error = InternalCallableError.new(e.message) do
+    rescue => original
+      error = original
+      if INBUILT_ERRORS.include?(error.class)
+        error = InternalCallableError.new(error.message) do
           $stderr.puts "\nUsage:\n\n"
           name = active_command? ? active_command.name : :error
           run_help_command([name])
         end
       end
-      raise new_error
+      raise error
     end
 
     ##
