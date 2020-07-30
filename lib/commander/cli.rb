@@ -5,8 +5,8 @@ module Commander
     ##
     # Wrapper run command with error handling
     def run!(*args)
-      Commander.traceable_error_handler(*args) do |new_args|
-        run(*new_args)
+      Commander::ErrorHandler.new(program(:name)).start do |handler|
+        run(*handler.parse_trace(*args))
       end
     end
 

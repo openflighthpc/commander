@@ -1,3 +1,5 @@
+require 'paint'
+
 module Commander
   ##
   # Internal error class to delay rendering help text
@@ -17,56 +19,44 @@ module Commander
     end
   end
 
-  INTERRUPT_MSG = 'Received Interrupt!'
+  ErrorHandler = Struct.new(:program_name, :trace) do
+    def parse_trace(*raw_args)
+      # Do not modify the original array
+      args = raw_args.dup
 
-  def self.traceable_error_handler(*args)
-    # Determines if there is a --trace flag before a --
-    trace_index = args.index do |a|
-      if a == '--trace'
-        true
-      elsif a == '--'
-        break
-      else
-        false
+      # Determines if there is a --trace flag before a --
+      trace_index = args.index do |a|
+        if a == '--trace'
+          self.trace = true
+        elsif a == '--'
+          break
+        else
+          false
+        end
       end
+
+      # Removes the --trace flag if required
+      args.tap { |a| a.delete_at(trace_index) if trace_index }
     end
 
-    # Removes the --trace flag if required
-    new_args = args.dup
-    new_args.delete_at(trace_index) if trace_index
+    def start
+      yield(self) if block_given?
+    rescue => e
+      $stderr.puts e.full_message if trace
 
-    # Start the actual error handler
-    error_handler(!!trace_index) do
-      yield(new_args) if block_given?
+      error_msg = "#{Paint[program_name, '#2794d8']}: #{Paint[e.to_s, :red, :bright]}"
+      exit_code = e.respond_to?(:exit_code) ?  e.exit_code.to_i : 1
+      case e
+      when InternalCallableError
+        # See: https://shapeshed.com/unix-exit-codes/
+        exit_code = 126
+        $stderr.puts error_msg
+        e.call
+      else
+        $stderr.puts error_msg
+      end
+      exit(exit_code)
     end
-
-  rescue Interrupt
-    # Start Rescuing Interrupt Immediately
-    $stderr.puts INTERRUPT_MSG
-    exit 130
-  end
-
-  def self.error_handler(trace = false)
-    yield if block_given?
-  rescue StandardError, Interrupt => e
-    $stderr.puts e.full_message if trace
-
-    error_msg = e.message
-    exit_code = e.respond_to?(:exit_code) ?  e.exit_code.to_i : 1
-    case e
-    when InternalCallableError
-      # See: https://shapeshed.com/unix-exit-codes/
-      exit_code = 126
-      $stderr.puts error_msg
-      e.call
-    when Interrupt
-      $stderr.puts INTERRUPT_MSG
-      # See: https://shapeshed.com/unix-exit-codes/
-      exit_code = 130
-    else
-      $stderr.puts error_msg
-    end
-    exit(exit_code)
   end
 end
 
