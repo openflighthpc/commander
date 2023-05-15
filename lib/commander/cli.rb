@@ -82,6 +82,10 @@ module Commander
       @commands ||= {}
     end
 
+    def groups
+      @groups ||= {}
+    end
+
     ##
     # Hash of Global Options
     #
@@ -99,6 +103,13 @@ module Commander
       name = name.to_s
       (commands[name] ||= Command.new(name)).tap do |cmd|
         yield cmd if block_given?
+      end
+    end
+
+    def group(name)
+      name = name.to_s
+      (groups[name] ||= Group.new(name)).tap do |grp|
+        yield grp if block_given?
       end
     end
 
