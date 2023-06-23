@@ -87,6 +87,9 @@ module Commander
       elsif opts.help && active_command?
         # Return help for the active_command
         run_help_command([active_command!.name])
+      elsif active_group?
+        # Return command listing for active_group
+        raise active_group.to_s
       elsif active_command?
         # Run the active_command
         active_command.run!(remaining_args, opts, config)
@@ -139,6 +142,10 @@ module Commander
       @commands[name.to_s]
     end
 
+    def group(name)
+      @groups[name.to_s]
+    end
+
     ##
     # Check if command _name_ is an alias.
 
@@ -179,6 +186,24 @@ module Commander
 
     def default_command?
       default_command ? true : false
+    end
+
+    def active_group
+      @__active_group ||= group(group_name_from_args)
+    end
+
+    def group_name_from_args
+      @__command_name_from_args ||= valid_group_names_from(*@args.dup).sort.last
+    end
+
+    def valid_group_names_from(*args)
+      groups.keys.find_all do |name|
+        name if flagless_args_string =~ /^#{name}(?![[:graph:]])/
+      end
+    end
+
+    def active_group?
+      active_group ? true : false
     end
 
     ##
