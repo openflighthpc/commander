@@ -10,10 +10,10 @@ module Commander
     ##
     # Initialize new command with specified _name_.
 
-    def initialize(name, group: nil)
+    def initialize(name)
       @name, @examples, @when_called = name.to_s, [], []
       @options = []
-      @group = group
+      @group = nil
     end
 
     # Allows the commands to be sorted via priority

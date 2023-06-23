@@ -77,11 +77,13 @@ module Commander
 
 
     ##
-    # Hash of Command objects
+    # Hash of ungrouped Command objects
     def commands
       @commands ||= {}
     end
 
+    ##
+    # Hash of Group objects
     def groups
       @groups ||= {}
     end
@@ -108,6 +110,7 @@ module Commander
 
     def group(name)
       name = name.to_s
+
       (groups[name] ||= Group.new(name)).tap do |grp|
         yield grp if block_given?
       end
