@@ -89,7 +89,7 @@ module Commander
         run_help_command([active_command!.name])
       elsif active_group?
         # Return command listing for active_group
-        raise active_group.to_s
+        run_help_group(active_group.name)
       elsif active_command?
         # Run the active_command
         active_command.run!(remaining_args, opts, config)
@@ -188,6 +188,10 @@ module Commander
       default_command ? true : false
     end
 
+    def active_group!
+      active_group.tap { |g| require_valid_group(g) }
+    end
+
     def active_group
       @__active_group ||= group(group_name_from_args)
     end
@@ -277,6 +281,12 @@ module Commander
         require_valid_command command
         say help_formatter.render_command(command)
       end
+    end
+
+    def run_help_group(name)
+      UI.enable_paging if program(:help_paging)
+      group = group(name)
+      say help_formatter.render_group(group)
     end
 
     ##

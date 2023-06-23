@@ -19,6 +19,10 @@ module Commander
       def render_command(command)
         "Implement help for #{command.name} here"
       end
+
+      def render_group(group)
+        "Implement help for #{group.name} here"
+      end
     end
   end
 end

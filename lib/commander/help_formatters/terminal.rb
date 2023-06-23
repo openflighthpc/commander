@@ -11,6 +11,10 @@ module Commander
         template(:command_help).result(Context.new(command).get_binding)
       end
 
+      def render_group(group)
+        template(:group_help).result(GroupContext.new(group).get_binding)
+      end
+
       def template(name)
         ERB.new(File.read(File.join(File.dirname(__FILE__), 'terminal', "#{name}.erb")), nil, '-')
       end
