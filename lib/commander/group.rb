@@ -1,11 +1,10 @@
 module Commander
   class Group
 
-    attr_accessor :name, :description
+    attr_accessor :name, :summary, :description
 
     def initialize(name)
       @name = name.to_s
-      @description = ""
     end
 
     def commands

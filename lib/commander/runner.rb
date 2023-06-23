@@ -264,7 +264,7 @@ module Commander
     # essentially the same as using the --help switch.
     def run_help_command(args)
       UI.enable_paging if program(:help_paging)
-      @help_commands = @commands.reject { |_, v| v.hidden(false) }.to_h
+      @help_commands = @commands.reject { |_, v| v.hidden(false) }.to_h.merge(@groups)
       if args.empty? || args[0] == :error
         @help_options = []
         old_wrap = $terminal.wrap_at
