@@ -12,7 +12,7 @@ module Commander
 
     def run(*args)
       instance = Runner.new(
-        @program, commands, default_command,
+        @program, commands, default_command, groups,
         global_slop, aliases, args
       )
       instance.run

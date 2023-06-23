@@ -9,9 +9,13 @@ module Commander
     class InvalidCommandError < CommandError; end
 
     ##
-    # Array of commands.
+    # Hash of commands.
 
     attr_reader :commands
+
+    ##
+    # Hash of groups
+    attr_reader :groups
 
     ##
     # The global Slop Options
@@ -31,7 +35,7 @@ module Commander
     attr_accessor :trace
 
     def initialize(*inputs)
-      @program, @commands, @default_command, \
+      @program, @commands, @default_command, @groups, \
         @global_slop, @aliases, @args = inputs.map(&:dup)
 
       @commands['help'] ||= Command.new('help').tap do |c|
@@ -193,7 +197,13 @@ module Commander
     # Returns array of valid command names found within _args_.
 
     def valid_command_names_from(*args)
-      commands.keys.find_all do |name|
+      expanded_groups = groups.map do |g_name, g_obj|
+        g_obj.commands.map do |c_name, c_obj|
+          [g_name, c_name].join(' ')
+        end
+      end.flatten
+
+      x = (commands.keys + expanded_groups).find_all do |name|
         name if flagless_args_string =~ /^#{name}(?![[:graph:]])/
       end
     end
