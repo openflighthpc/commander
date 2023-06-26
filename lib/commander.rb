@@ -27,6 +27,7 @@ $terminal = HighLine.new
 require 'commander/error_handler'
 require 'commander/version'
 require 'commander/command'
+require 'commander/group'
 require 'commander/runner'
 require 'commander/help_formatters'
 require 'commander/cli'

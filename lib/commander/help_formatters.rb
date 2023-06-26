@@ -39,6 +39,21 @@ module Commander
       end
     end
 
+    class GroupContext < Context
+      def decorate_binding(bind)
+        bind.eval("max_command_length = #{max_command_length(bind)}")
+      end
+
+      def max_command_length(bind)
+        max_key_length(bind.eval('@commands'))
+      end
+
+      def max_key_length(hash, default = 20)
+        longest = hash.keys.max_by(&:size)
+        longest ? longest.size : default
+      end
+    end
+
     module_function
 
     def indent(amount, text)

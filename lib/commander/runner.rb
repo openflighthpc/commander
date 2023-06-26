@@ -9,9 +9,13 @@ module Commander
     class InvalidCommandError < CommandError; end
 
     ##
-    # Array of commands.
+    # Hash of commands.
 
     attr_reader :commands
+
+    ##
+    # Hash of groups
+    attr_reader :groups
 
     ##
     # The global Slop Options
@@ -31,7 +35,7 @@ module Commander
     attr_accessor :trace
 
     def initialize(*inputs)
-      @program, @commands, @default_command, \
+      @program, @commands, @default_command, @groups, \
         @global_slop, @aliases, @args = inputs.map(&:dup)
 
       @commands['help'] ||= Command.new('help').tap do |c|
@@ -83,6 +87,9 @@ module Commander
       elsif opts.help && active_command?
         # Return help for the active_command
         run_help_command([active_command!.name])
+      elsif active_group?
+        # Return command listing for active_group
+        run_help_group(active_group.name)
       elsif active_command?
         # Run the active_command
         active_command.run!(remaining_args, opts, config)
@@ -135,6 +142,10 @@ module Commander
       @commands[name.to_s]
     end
 
+    def group(name)
+      @groups[name.to_s]
+    end
+
     ##
     # Check if command _name_ is an alias.
 
@@ -177,6 +188,28 @@ module Commander
       default_command ? true : false
     end
 
+    def active_group!
+      active_group.tap { |g| require_valid_group(g) }
+    end
+
+    def active_group
+      @__active_group ||= group(group_name_from_args)
+    end
+
+    def group_name_from_args
+      @__command_name_from_args ||= valid_group_names_from(*@args.dup).sort.last
+    end
+
+    def valid_group_names_from(*args)
+      groups.keys.find_all do |name|
+        name if flagless_args_string =~ /^#{name}(?![[:graph:]])/
+      end
+    end
+
+    def active_group?
+      active_group ? true : false
+    end
+
     ##
     # Attempts to locate a command name from within the arguments.
     # Supports multi-word commands, using the largest possible match.
@@ -193,7 +226,13 @@ module Commander
     # Returns array of valid command names found within _args_.
 
     def valid_command_names_from(*args)
-      commands.keys.find_all do |name|
+      expanded_groups = groups.map do |g_name, g_obj|
+        g_obj.commands.map do |c_name, c_obj|
+          [g_name, c_name].join(' ')
+        end
+      end.flatten
+
+      x = (commands.keys + expanded_groups).find_all do |name|
         name if flagless_args_string =~ /^#{name}(?![[:graph:]])/
       end
     end
@@ -229,7 +268,7 @@ module Commander
     # essentially the same as using the --help switch.
     def run_help_command(args)
       UI.enable_paging if program(:help_paging)
-      @help_commands = @commands.reject { |_, v| v.hidden(false) }.to_h
+      @help_commands = @commands.reject { |_, v| v.hidden(false) }.to_h.merge(@groups)
       if args.empty? || args[0] == :error
         @help_options = []
         old_wrap = $terminal.wrap_at
@@ -242,6 +281,12 @@ module Commander
         require_valid_command command
         say help_formatter.render_command(command)
       end
+    end
+
+    def run_help_group(name)
+      UI.enable_paging if program(:help_paging)
+      group = group(name)
+      say help_formatter.render_group(group)
     end
 
     ##

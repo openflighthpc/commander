@@ -12,7 +12,7 @@ module Commander
 
     def run(*args)
       instance = Runner.new(
-        @program, commands, default_command,
+        @program, commands, default_command, groups,
         global_slop, aliases, args
       )
       instance.run
@@ -77,9 +77,15 @@ module Commander
 
 
     ##
-    # Hash of Command objects
+    # Hash of ungrouped Command objects
     def commands
       @commands ||= {}
+    end
+
+    ##
+    # Hash of Group objects
+    def groups
+      @groups ||= {}
     end
 
     ##
@@ -99,6 +105,14 @@ module Commander
       name = name.to_s
       (commands[name] ||= Command.new(name)).tap do |cmd|
         yield cmd if block_given?
+      end
+    end
+
+    def group(name)
+      name = name.to_s
+
+      (groups[name] ||= Group.new(name)).tap do |grp|
+        yield grp if block_given?
       end
     end
 

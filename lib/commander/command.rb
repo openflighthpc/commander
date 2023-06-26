@@ -5,14 +5,15 @@ module Commander
     class CommandUsageError < StandardError; end
 
     attr_accessor :name, :examples, :syntax, :description, :priority
-    attr_accessor :summary, :options
+    attr_accessor :summary, :options, :group
 
     ##
     # Initialize new command with specified _name_.
 
-    def initialize(name)
+    def initialize(name, group=nil)
       @name, @examples, @when_called = name.to_s, [], []
       @options = []
+      @group = group
     end
 
     # Allows the commands to be sorted via priority
